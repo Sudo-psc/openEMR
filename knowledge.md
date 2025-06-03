@@ -2,59 +2,58 @@
 
 ## Overview
 
-This project sets up OpenEMR for Clínica Saraiva Vision using Docker Compose. It includes a pre-configured Nginx reverse proxy for HTTPS, initially with self-signed certificates, and now with support for Let's Encrypt.
+This project sets up OpenEMR for Clínica Saraiva Vision using Docker Compose. It includes a pre-configured Nginx reverse proxy that supports both HTTP and HTTPS access, with self-signed certificates as fallback and optional Let's Encrypt support.
 
 ## Key Files
 
-- `docker-compose.yml`: Defines the services (OpenEMR, MySQL, Nginx, Certbot).
-- `nginx/nginx.conf`: Nginx configuration for reverse proxy, SSL, and Let's Encrypt challenges.
-- `saraiva-vision-setup.sh`: Script to initialize the Docker containers (primarily for initial setup).
+- `docker-compose.yml`: Defines the services (OpenEMR, MySQL, Nginx, Certbot) with fallback SSL configuration.
+- `nginx/nginx-fallback.conf`: Nginx configuration using self-signed certificates for immediate HTTPS access.
+- `nginx/nginx.conf`: Original configuration for Let's Encrypt (not currently in use).
+- `saraiva-vision-setup.sh`: Script to initialize the Docker containers.
 - `README-Saraiva-Vision.md`: Detailed setup and usage instructions.
 
-## SSL/HTTPS Setup (Let's Encrypt)
+## Current SSL/HTTPS Setup
 
-This project is configured to use Let's Encrypt for SSL certificates for the domain `emr.saraivavision.com.br`.
+The system is currently configured to use **self-signed certificates** for immediate HTTPS access. This allows both HTTP and HTTPS to work without requiring Let's Encrypt setup.
+
+**Current Access URLs:**
+- **HTTP**: `http://localhost` (Local) or `http://emr.saraivavision.com.br` (Production)
+- **HTTPS**: `https://localhost` or `https://emr.saraivavision.com.br` (Uses self-signed certificates - browsers will show security warnings)
+
+**Configuration Details:**
+- Uses `nginx-fallback.conf` which includes self-signed certificates
+- Self-signed certificates are mapped from `./ssl/` directory
+- Both HTTP and HTTPS work immediately without additional setup
+- HTTPS will show browser warnings due to self-signed certificates
+
+## Optional Let's Encrypt Upgrade
+
+To upgrade to Let's Encrypt certificates (for production without browser warnings):
 
 **Prerequisites:**
-- The domain `emr.saraivavision.com.br` must have its DNS A record pointing to the public IP address of the server running this Docker setup.
+- The domain `emr.saraivavision.com.br` must have its DNS A record pointing to the public IP address of the server.
 - Port 80 and 443 must be open on the server.
 
-**Initial Certificate Generation:**
-1.  **Start Nginx and other services:**
-    ```bash
-    docker-compose up -d --remove-orphans
-    ```
-    (Nginx might show errors initially as certificates don't exist yet. This is expected.)
+**Steps to Enable Let's Encrypt:**
+1. Switch nginx configuration back to the original:
+   ```bash
+   # In docker-compose.yml, change:
+   # - ./nginx/nginx-fallback.conf:/etc/nginx/nginx.conf:ro
+   # to:
+   # - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+   ```
 
-2.  **Run Certbot to Obtain the Certificate:**
-    Replace `philipe_cruz@outlook.com` with your actual email if different.
-    ```bash
-    docker-compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot \
-        --email philipe_cruz@outlook.com --agree-tos --no-eff-email \
-        -d emr.saraivavision.com.br
-    ```
+2. **Run Certbot to Obtain the Certificate:**
+   ```bash
+   docker-compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot \
+       --email philipe_cruz@outlook.com --agree-tos --no-eff-email \
+       -d emr.saraivavision.com.br
+   ```
 
-3.  **Restart Nginx:**
-    Once Certbot successfully obtains the certificates:
-    ```bash
-    docker-compose restart nginx
-    ```
-
-4.  **Ensure Certbot service is running for renewals:**
-    The Certbot service defined in `docker-compose.yml` handles automatic renewals. If it's not already running from step 1:
-    ```bash
-    docker-compose up -d certbot
-    ```
-    Or simply ensure all services are up:
-    ```bash
-    docker-compose up -d
-    ```
-
-**Automated Renewal:**
-The `certbot` service in `docker-compose.yml` is configured to attempt renewal every 12 hours.
-
-**Accessing the Application:**
-Access OpenEMR via `https://emr.saraivavision.com.br`. Accessing via `https://localhost` will result in certificate warnings as the Let's Encrypt certificate is issued for the specific domain.
+3. **Restart Nginx:**
+   ```bash
+   docker-compose restart nginx
+   ```
 
 ## CI/CD Strategy (Proposed)
 
@@ -109,17 +108,16 @@ This section outlines a potential CI/CD strategy for this project.
 ### Considerations for Production:
 -   **Secrets Management:** Securely manage passwords (e.g., `MYSQL_ROOT_PASSWORD`, `OE_PASS`) using CI/CD environment variables or a secrets manager, rather than hardcoding in `docker-compose.yml` for production.
 -   **Database Migrations e Backup de Dados:** OpenEMR lida com seu próprio esquema. Consulte a seção "Backup e Restauração de Dados" no `README-Saraiva-Vision.md` para instruções detalhadas e boas práticas de backup, com timestamp, compactação e restauração segura.
--   **SSL Certificates:** Now managed by Let's Encrypt. Ensure renewal process is monitored.
+-   **SSL Certificates:** Currently using self-signed certificates. For production, consider upgrading to Let's Encrypt.
 -   **Downtime:** `docker-compose up -d` can cause brief downtime. For zero-downtime, consider blue/green deployments or load balancing with multiple instances.
 -   **Monitoring & Logging:** Implement robust monitoring and centralized logging for production.
 
 ## Development Environment
-- For initial setup, you can still use `./saraiva-vision-setup.sh` but be aware it's now configured for Let's Encrypt.
-- If developing locally without a public domain/IP, the Let's Encrypt setup will not work. You might need to temporarily revert to self-signed certificates or use a different Nginx configuration for local-only development.
-- Access via `https://emr.saraivavision.com.br` (requires DNS and public IP).
+- For immediate setup, use `./saraiva-vision-setup.sh` which now works with self-signed certificates.
+- Access via `http://localhost` for HTTP or `https://localhost` for HTTPS (with browser warnings).
 - Default OpenEMR credentials: `admin`/`pass`.
 
 ## Production Deployment Notes
-- Ensure the domain `emr.saraivavision.com.br` points to your server's public IP.
-- Follow the Let's Encrypt initial certificate generation steps.
+- Current setup works immediately with self-signed certificates
+- For production without browser warnings, upgrade to Let's Encrypt following the steps above
 - Ensure `docker-compose.yml` environment variables for passwords are secure.

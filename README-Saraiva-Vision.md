@@ -39,21 +39,21 @@ This setup uses Let's Encrypt for SSL certificates. After running the setup scri
    ```
 
 ### 4. Acesso ao Sistema
-- **URL HTTPS**: `https://emr.saraivavision.com.br` (Secure, uses Let's Encrypt)
+- **URL HTTPS**: `https://emr.saraivavision.com.br` (Recomendado para produção; usa Let's Encrypt)
+- **URL HTTP**: `http://emr.saraivavision.com.br` (Produção) ou `http://localhost` (Local/desenvolvimento)
 - **Usuário**: admin
 - **Senha**: pass
 
-**Nota sobre `localhost`**: Accessing via `https://localhost` will show certificate warnings because the Let's Encrypt certificate is for `emr.saraivavision.com.br`, not `localhost`.
+**Nota sobre `https://localhost`**: Acessar `https://localhost` provavelmente mostrará avisos de certificado, pois o certificado Let's Encrypt é para `emr.saraivavision.com.br`. Para acesso local, prefira `http://localhost`.
 
 ## Segurança SSL/HTTPS (Let's Encrypt)
 
 ### Características de Segurança:
 - **Let's Encrypt Certificates**: Trusted SSL certificates for `emr.saraivavision.com.br`.
 - **Automated Renewal**: Certbot service automatically renews certificates.
-- **Redirecionamento automático** HTTP → HTTPS.
 - **Protocolos seguros** TLS 1.2 e 1.3.
 - **Headers de segurança** configurados.
-- **Content Security Policy (CSP)**: `upgrade-insecure-requests` to upgrade insecure HTTP requests and prevent mixed content.
+- **Content Security Policy (CSP)**: `upgrade-insecure-requests` para `https://emr.saraivavision.com.br` para ajudar a prevenir conteúdo misto.
 - **Proxy reverso nginx** for managing SSL and serving OpenEMR.
 
 ### For Production:
