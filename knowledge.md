@@ -108,7 +108,7 @@ This section outlines a potential CI/CD strategy for this project.
 
 ### Considerations for Production:
 -   **Secrets Management:** Securely manage passwords (e.g., `MYSQL_ROOT_PASSWORD`, `OE_PASS`) using CI/CD environment variables or a secrets manager, rather than hardcoding in `docker-compose.yml` for production.
--   **Database Migrations:** OpenEMR handles its own schema. Backups are crucial.
+-   **Database Migrations e Backup de Dados:** OpenEMR lida com seu próprio esquema. Consulte a seção "Backup e Restauração de Dados" no `README-Saraiva-Vision.md` para instruções detalhadas e boas práticas de backup, com timestamp, compactação e restauração segura.
 -   **SSL Certificates:** Now managed by Let's Encrypt. Ensure renewal process is monitored.
 -   **Downtime:** `docker-compose up -d` can cause brief downtime. For zero-downtime, consider blue/green deployments or load balancing with multiple instances.
 -   **Monitoring & Logging:** Implement robust monitoring and centralized logging for production.

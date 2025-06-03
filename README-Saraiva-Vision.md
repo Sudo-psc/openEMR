@@ -117,25 +117,45 @@ docker-compose logs -f certbot
 
 # Manually renew certificates (usually not needed)
 docker-compose run --rm certbot renew
-
-# Backup dos dados
-docker-compose exec mysql mysqldump -u openemr -p openemr > backup_saraiva_vision.sql
-
-# Restaurar backup
-docker-compose exec -i mysql mysql -u openemr -p openemr < backup_saraiva_vision.sql
 ```
-**Note:** The `ssl/` directory with self-signed certificates is no longer used by default if Let's Encrypt is active. It can be kept for fallback or local-only development if Nginx config is adjusted.
+
+## Backup e Restauração de Dados
+
+Para realizar o backup do banco de dados OpenEMR (substitua `openemr` pelas variáveis apropriadas, se diferente):
+
+```bash
+# Cria um backup compactado com timestamp usando variáveis de ambiente ou valores padrão
+TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
+BACKUP_FILE="backup_saraiva_vision_${TIMESTAMP}.sql.gz"
+docker-compose exec -T mysql \
+  mysqldump --user="${MYSQL_USER:-openemr}" --password="${MYSQL_PASSWORD:-openemr}" "${MYSQL_DATABASE:-openemr}" \
+  | gzip > "${BACKUP_FILE}"
+echo "Backup salvo em ${BACKUP_FILE}"
+```
+
+Para restaurar um backup existente (substitua `arquivo_de_backup.sql.gz` pelo nome do arquivo desejado):
+
+```bash
+gunzip < arquivo_de_backup.sql.gz \
+  | docker-compose exec -T mysql \
+    mysql --user="${MYSQL_USER:-openemr}" --password="${MYSQL_PASSWORD:-openemr}" "${MYSQL_DATABASE:-openemr}"
+echo "Restauração concluída"
+```
+
+**Observação:** Ajuste `MYSQL_USER`, `MYSQL_PASSWORD` e `MYSQL_DATABASE` conforme definido no seu `docker-compose.yml`. Esse método evita exposições acidentais de senha no histórico de comandos.
+
+**Observação:** O diretório `ssl/`, contendo certificados autoassinados, não é mais utilizado por padrão quando o Let's Encrypt estiver ativo. Ele pode ser mantido para fallback ou desenvolvimento local, desde que o Nginx seja ajustado.
 
 ## Próximos Passos
 
-1. Complete the initial certificate generation steps above.
-2. Access OpenEMR via `https://emr.saraivavision.com.br` and complete the setup wizard.
-3. Configure usuários específicos da clínica.
-4. Importe templates de exames oftalmológicos
-5. Configure agendamento para diferentes tipos de consulta
-6. Configure relatórios específicos para oftalmologia
-7. Integre com equipamentos oftalmológicos (se necessário)
-8. Para produção: substitua certificados auto-assinados por certificados válidos
+1. Complete os passos de geração inicial de certificados descritos acima.
+2. Acesse o OpenEMR em `https://emr.saraivavision.com.br` e conclua o assistente de configuração.
+3. Configure os usuários específicos da clínica.
+4. Importe os templates de exames oftalmológicos.
+5. Configure o agendamento para diferentes tipos de consulta.
+6. Configure relatórios específicos para oftalmologia.
+7. Integre com equipamentos oftalmológicos (se necessário).
+8. Em produção, substitua os certificados autoassinados por certificados válidos.
 
 ## Suporte
 
