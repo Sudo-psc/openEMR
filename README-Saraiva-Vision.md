@@ -119,10 +119,14 @@ docker-compose logs -f certbot
 docker-compose run --rm certbot renew
 
 # Backup dos dados
-docker-compose exec mysql mysqldump -u openemr -p openemr > backup_saraiva_vision.sql
+Utilize o script `backup.sh` para gerar dumps do banco de dados em `./backups`:
 
-# Restaurar backup
-docker-compose exec -i mysql mysql -u openemr -p openemr < backup_saraiva_vision.sql
+```bash
+./backup.sh
+```
+
+# Restaurar backup manualmente
+docker-compose exec -i mysql mysql -u "$MYSQL_USER" -p"$MYSQL_PASS" openemr < caminho/para/arquivo.sql
 ```
 **Note:** The `ssl/` directory with self-signed certificates is no longer used by default if Let's Encrypt is active. It can be kept for fallback or local-only development if Nginx config is adjusted.
 

@@ -16,7 +16,7 @@ jobs:
 
     - name: Lint Docker Compose file
       run: |
-        docker-compose -f docker-compose.yml config
+        docker-compose --env-file .env.example -f docker-compose.yml config
 
     - name: Install ShellCheck
       run: sudo apt-get update && sudo apt-get install -y shellcheck

@@ -6,7 +6,7 @@ This project sets up OpenEMR for Clínica Saraiva Vision using Docker Compose. I
 
 ## Key Files
 
-- `docker-compose.yml`: Defines the services (OpenEMR, MySQL, Nginx, Certbot).
+- `docker-compose.yml`: Defines the services (OpenEMR, MySQL, Nginx, Certbot). Uses variables from `.env`.
 - `nginx/nginx.conf`: Nginx configuration for reverse proxy, SSL, and Let's Encrypt challenges.
 - `saraiva-vision-setup.sh`: Script to initialize the Docker containers (primarily for initial setup).
 - `README-Saraiva-Vision.md`: Detailed setup and usage instructions.
@@ -109,6 +109,7 @@ This section outlines a potential CI/CD strategy for this project.
 ### Considerations for Production:
 -   **Secrets Management:** Securely manage passwords (e.g., `MYSQL_ROOT_PASSWORD`, `OE_PASS`) using CI/CD environment variables or a secrets manager, rather than hardcoding in `docker-compose.yml` for production.
 -   **Database Migrations:** OpenEMR handles its own schema. Backups are crucial.
+-   Use the `backup.sh` script or another backup tool to export the database regularly.
 -   **SSL Certificates:** Now managed by Let's Encrypt. Ensure renewal process is monitored.
 -   **Downtime:** `docker-compose up -d` can cause brief downtime. For zero-downtime, consider blue/green deployments or load balancing with multiple instances.
 -   **Monitoring & Logging:** Implement robust monitoring and centralized logging for production.
