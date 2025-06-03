@@ -1,0 +1,51 @@
+#!/bin/bash
+
+echo "=== Configuração OpenEMR para Clínica Saraiva Vision ==="
+echo "Iniciando containers..."
+
+# Iniciar os containers
+docker-compose up -d
+
+echo "Aguardando inicialização dos containers..."
+sleep 30
+
+echo "Containers iniciados! Acesse:"
+echo "- OpenEMR HTTPS: https://localhost (Recomendado)"
+echo "- OpenEMR HTTP: http://localhost (Redirecionado para HTTPS)"
+echo "- Usuário: admin"
+echo "- Senha: pass"
+echo ""
+echo "NOTA: Como estamos usando certificados auto-assinados, seu navegador"
+echo "      mostrará um aviso de segurança. Clique em 'Avançado' e"
+echo "      'Prosseguir para localhost' para continuar."
+echo ""
+echo "=== Configurações específicas para Oftalmologia ==="
+echo "1. Após o login, vá em Administration > Modules"
+echo "2. Ative os módulos relacionados a oftalmologia:"
+echo "   - Eye Exam Module"
+echo "   - Visual Acuity Tests"
+echo "   - Ophthalmology Forms"
+echo ""
+echo "3. Configure os formulários específicos em:"
+echo "   - Administration > Forms"
+echo "   - Adicione formulários para:"
+echo "     * Exame de Acuidade Visual"
+echo "     * Tonometria"
+echo "     * Fundoscopia"
+echo "     * Campo Visual"
+echo "     * Biomicroscopia"
+echo ""
+echo "4. Configure especialidades médicas:"
+echo "   - Administration > Lists > Medical Services"
+echo "   - Adicione: Oftalmologia, Retina, Glaucoma, etc."
+echo ""
+echo "=== Próximos passos ==="
+echo "1. Complete a configuração inicial no navegador"
+echo "2. Configure os usuários da clínica"
+echo "3. Importe templates de exames oftalmológicos"
+echo "4. Configure agendamento para consultas de oftalmologia"
+
+echo ""
+echo "Para parar os containers: docker-compose down"
+echo "Para ver logs: docker-compose logs -f"
+echo "Para ver logs do nginx: docker-compose logs -f nginx"

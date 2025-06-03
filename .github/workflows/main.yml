@@ -1,0 +1,33 @@
+name: OpenEMR CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Lint Docker Compose file
+      run: |
+        docker-compose -f docker-compose.yml config
+
+    - name: Install ShellCheck
+      run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+    - name: Lint setup script
+      run: |
+        shellcheck saraiva-vision-setup.sh
+
+    # Placeholder for future tests
+    # - name: Run smoke tests
+    #   run: |
+    #     docker-compose up -d
+    #     # Add commands here to check if services are up, e.g., curl http://localhost
+    #     # docker-compose down
