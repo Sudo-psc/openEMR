@@ -38,12 +38,25 @@ Schedule this script with `cron` to run daily.
 - Passwords are stored in the `.env` file, which is ignored by Git.
 - The Nginx configuration includes security headers and enforces HTTPS.
 - Keep containers and images up to date.
+## Firewall Setup
+
+Run `./firewall-setup.sh` as root to open ports 80 and 443 for the Docker containers.
+
 
 ## Useful Commands
 
 - Start/update services: `docker-compose up -d`
 - Stop services: `docker-compose down`
 - View logs: `docker-compose logs -f`
+
+## Log Monitoring with OpenAI
+
+Use `log-monitor-openai.sh` to summarize container logs with the OpenAI API.
+This script uses the `gpt-4o` model for more accurate summaries.
+Set `OPENAI_API_KEY` and run:
+```bash
+OPENAI_API_KEY=your_key ./log-monitor-openai.sh
+```
 
 ## CI/CD
 
