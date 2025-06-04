@@ -6,7 +6,7 @@ This project sets up OpenEMR for Clínica Saraiva Vision using Docker Compose. I
 
 ## Key Files
 
-- `docker-compose.yml`: Defines the services (OpenEMR, MySQL, Nginx, Certbot). Uses variables from `.env`.
+- `docker-compose.yml`: Defines the services (OpenEMR, MySQL, CouchDB, Nginx, Certbot). Uses variables from `.env`.
 - `docker/nginx/nginx.conf`: Nginx configuration for reverse proxy, SSL, and Let's Encrypt challenges.
 - `saraiva-vision-setup.sh`: Script to initialize the Docker containers (primarily for initial setup).
 - `README-Saraiva-Vision.md`: Detailed setup and usage instructions.

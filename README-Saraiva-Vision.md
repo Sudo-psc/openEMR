@@ -4,7 +4,8 @@
 
 ### 1. Prerequisites
 - A domain name (e.g., `emr.saraivavision.com.br`) pointing to your server's public IP address.
-- Ports 80 and 443 open on your server.
+- Ports 80, 443 and 5984 open on your server.
+- CouchDB is used to store documents and listens on port 5984.
 
 ### 2. Initial Setup Script
 The `saraiva-vision-setup.sh` script can be used to bring up the containers initially.
@@ -114,6 +115,8 @@ docker-compose logs -f nginx
 
 # Ver logs do certbot
 docker-compose logs -f certbot
+# Ver logs do CouchDB
+docker-compose logs -f couchdb
 
 # Manually renew certificates (usually not needed)
 docker-compose run --rm certbot renew
@@ -124,6 +127,7 @@ Utilize o script `backup.sh` para gerar dumps do banco de dados em `./backups`:
 ```bash
 ./backup.sh
 ```
+O script também gera um arquivo compactado com os dados do CouchDB.
 
 # Restaurar backup manualmente
 docker-compose exec -i mysql mysql -u "$MYSQL_USER" -p"$MYSQL_PASS" openemr < caminho/para/arquivo.sql
