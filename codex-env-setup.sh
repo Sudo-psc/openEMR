@@ -1,31 +1,52 @@
 #!/bin/bash
 # Setup script for Codex AI agent: install dependencies and start OpenEMR
-set -euo pipefail
+set -Eeuo pipefail
 
-echo "=== Codex OpenEMR Development Setup ==="
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [setup] $*" >&2
+}
 
-# Install Docker and docker-compose if missing
+abort() {
+    log "ERROR: $*"
+    exit 1
+}
+
+if [ "$(id -u)" -ne 0 ]; then
+    abort "Please run as root or with sudo"
+fi
+
+log "=== Codex OpenEMR Development Setup ==="
+
 if ! command -v docker >/dev/null; then
-  echo "Installing Docker and docker-compose..."
-  apt-get update
-  apt-get install -y docker.io docker-compose
+    log "Installing Docker and docker-compose..."
+    apt-get update -y
+    apt-get install -y docker.io docker-compose
 fi
 
-# Ensure .env exists
+command -v docker-compose >/dev/null || abort "docker-compose installation failed"
+
+if ! systemctl is-active --quiet docker; then
+    log "Starting Docker service..."
+    systemctl start docker
+fi
+
 if [ ! -f .env ]; then
-  echo "Creating .env from example"
-  cp .env.example .env
+    if [ -f .env.example ]; then
+        log "Creating .env from example"
+        cp .env.example .env
+    else
+        abort ".env.example missing"
+    fi
 fi
 
-# Start services
-echo "Starting OpenEMR containers..."
+log "Starting OpenEMR containers..."
 docker-compose up -d
 
-echo "Waiting for containers to initialize..."
+log "Waiting for containers to initialize..."
 sleep 30
 
-echo "OpenEMR is now accessible at:"
-echo "- http://localhost"
-echo "- https://localhost (self-signed certificate)"
-echo "Default credentials: admin / pass"
-echo "To stop the environment run: docker-compose down"
+log "OpenEMR is now accessible at:"
+log "- http://localhost"
+log "- https://localhost (self-signed certificate)"
+log "Default credentials: admin / pass"
+log "To stop the environment run: docker-compose down"
