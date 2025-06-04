@@ -39,21 +39,21 @@ This setup uses Let's Encrypt for SSL certificates. After running the setup scri
    ```
 
 ### 4. Acesso ao Sistema
-- **URL HTTPS**: `https://emr.saraivavision.com.br` (Secure, uses Let's Encrypt)
+- **URL HTTPS**: `https://emr.saraivavision.com.br` (Recomendado para produção; usa Let's Encrypt)
+- **URL HTTP**: `http://emr.saraivavision.com.br` (Produção) ou `http://localhost` (Local/desenvolvimento)
 - **Usuário**: admin
 - **Senha**: pass
 
-**Nota sobre `localhost`**: Accessing via `https://localhost` will show certificate warnings because the Let's Encrypt certificate is for `emr.saraivavision.com.br`, not `localhost`.
+**Nota sobre `https://localhost`**: Acessar `https://localhost` provavelmente mostrará avisos de certificado, pois o certificado Let's Encrypt é para `emr.saraivavision.com.br`. Para acesso local, prefira `http://localhost`.
 
 ## Segurança SSL/HTTPS (Let's Encrypt)
 
 ### Características de Segurança:
 - **Let's Encrypt Certificates**: Trusted SSL certificates for `emr.saraivavision.com.br`.
 - **Automated Renewal**: Certbot service automatically renews certificates.
-- **Redirecionamento automático** HTTP → HTTPS.
 - **Protocolos seguros** TLS 1.2 e 1.3.
 - **Headers de segurança** configurados.
-- **Content Security Policy (CSP)**: `upgrade-insecure-requests` to upgrade insecure HTTP requests and prevent mixed content.
+- **Content Security Policy (CSP)**: `upgrade-insecure-requests` para `https://emr.saraivavision.com.br` para ajudar a prevenir conteúdo misto.
 - **Proxy reverso nginx** for managing SSL and serving OpenEMR.
 
 ### For Production:
@@ -117,29 +117,35 @@ docker-compose logs -f certbot
 
 # Manually renew certificates (usually not needed)
 docker-compose run --rm certbot renew
+```
 
-# Backup dos dados
-Utilize o script `backup.sh` para gerar dumps do banco de dados em `./backups`:
+## Backup e Restauração de Dados
+
+
+
+Para restaurar um backup existente (substitua `arquivo_de_backup.sql.gz` pelo nome do arquivo desejado):
 
 ```bash
-./backup.sh
+gunzip < arquivo_de_backup.sql.gz \
+  | docker-compose exec -T mysql \
+    mysql --user="${MYSQL_USER:-openemr}" --password="${MYSQL_PASSWORD:-openemr}" "${MYSQL_DATABASE:-openemr}"
+echo "Restauração concluída"
 ```
 
-# Restaurar backup manualmente
-docker-compose exec -i mysql mysql -u "$MYSQL_USER" -p"$MYSQL_PASS" openemr < caminho/para/arquivo.sql
-```
-**Note:** The `ssl/` directory with self-signed certificates is no longer used by default if Let's Encrypt is active. It can be kept for fallback or local-only development if Nginx config is adjusted.
+**Observação:** Ajuste `MYSQL_USER`, `MYSQL_PASSWORD` e `MYSQL_DATABASE` conforme definido no seu `docker-compose.yml`. Esse método evita exposições acidentais de senha no histórico de comandos.
+
+**Observação:** O diretório `ssl/`, contendo certificados autoassinados, não é mais utilizado por padrão quando o Let's Encrypt estiver ativo. Ele pode ser mantido para fallback ou desenvolvimento local, desde que o Nginx seja ajustado.
 
 ## Próximos Passos
 
-1. Complete the initial certificate generation steps above.
-2. Access OpenEMR via `https://emr.saraivavision.com.br` and complete the setup wizard.
-3. Configure usuários específicos da clínica.
-4. Importe templates de exames oftalmológicos
-5. Configure agendamento para diferentes tipos de consulta
-6. Configure relatórios específicos para oftalmologia
-7. Integre com equipamentos oftalmológicos (se necessário)
-8. Para produção: substitua certificados auto-assinados por certificados válidos
+1. Complete os passos de geração inicial de certificados descritos acima.
+2. Acesse o OpenEMR em `https://emr.saraivavision.com.br` e conclua o assistente de configuração.
+3. Configure os usuários específicos da clínica.
+4. Importe os templates de exames oftalmológicos.
+5. Configure o agendamento para diferentes tipos de consulta.
+6. Configure relatórios específicos para oftalmologia.
+7. Integre com equipamentos oftalmológicos (se necessário).
+8. Em produção, substitua os certificados autoassinados por certificados válidos.
 
 ## Suporte
 
