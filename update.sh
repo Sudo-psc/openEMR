@@ -12,15 +12,25 @@ abort() {
     exit 1
 }
 
-command -v docker-compose >/dev/null 2>&1 || abort "docker-compose nao encontrado"
+get_dc_cmd() {
+    if docker compose version >/dev/null 2>&1; then
+        echo "docker compose"
+    elif command -v docker-compose >/dev/null 2>&1; then
+        echo "docker-compose"
+    else
+        return 1
+    fi
+}
+
+DC_CMD=$(get_dc_cmd) || abort "docker-compose nao encontrado"
 
 log "Baixando ultimas imagens..."
-docker-compose pull
+$DC_CMD pull
 
 log "Criando backup do banco de dados antes do update..."
 "$(dirname "$0")/backup.sh"
 
 log "Aplicando atualizacoes..."
-docker-compose up -d --remove-orphans
+$DC_CMD up -d --remove-orphans
 
 log "Update completo."

@@ -11,8 +11,21 @@ command -v jq >/dev/null 2>&1 || { echo "jq is required" >&2; exit 1; }
 LOG_FILE="./logs/docker.log"
 mkdir -p ./logs
 
+get_dc_cmd() {
+  if docker compose version >/dev/null 2>&1; then
+    echo "docker compose"
+  elif command -v docker-compose >/dev/null 2>&1; then
+    echo "docker-compose"
+  else
+    echo "docker-compose nao encontrado" >&2
+    exit 1
+  fi
+}
+
+DC_CMD=$(get_dc_cmd)
+
 echo "Collecting container logs..."
-docker-compose logs --no-color > "$LOG_FILE"
+$DC_CMD logs --no-color > "$LOG_FILE"
 
 # Take the last 200 lines for analysis
 LOG_DATA=$(tail -n 200 "$LOG_FILE" | sed 's/"/\\"/g')
