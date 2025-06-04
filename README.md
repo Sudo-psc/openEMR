@@ -39,6 +39,9 @@ Use the `backup.sh` script to create database dumps in the `./backups` directory
 ```bash
 ./backup.sh
 ```
+Set the `RCLONE_REMOTE` environment variable to automatically upload the
+generated file using [rclone](https://rclone.org). The value should be a
+configured remote path such as `s3:mybucket/backups`.
 
 Schedule this script with `cron` to run daily.
 

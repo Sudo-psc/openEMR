@@ -25,4 +25,14 @@ chmod +x "$TMP/bin/docker-compose"
 PATH="$(pwd)/$TMP/bin:$PATH" BACKUP_DIR="$(pwd)/$TMP/backups" MYSQL_USER=u MYSQL_PASS=p ./backup.sh >"$TMP/out" 2>&1
 [ -n "$(ls -A "$TMP/backups")" ]
 
+# Test: uploads backup when RCLONE_REMOTE is set
+cat <<STUB > "$TMP/bin/rclone"
+#!/bin/bash
+echo "$@" > "$TMP/rclone_args"
+exit 0
+STUB
+chmod +x "$TMP/bin/rclone"
+PATH="$(pwd)/$TMP/bin:$PATH" BACKUP_DIR="$(pwd)/$TMP/backups" MYSQL_USER=u MYSQL_PASS=p RCLONE_REMOTE="remote:dest" ./backup.sh >"$TMP/out" 2>&1
+grep -q "remote:dest" "$TMP/rclone_args"
+
 echo "backup.sh tests passed"
