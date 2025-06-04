@@ -4,8 +4,9 @@
 
 ### 1. Prerequisites
 - A domain name (e.g., `emr.saraivavision.com.br`) pointing to your server's public IP address.
-- Ports 80, 443 and 5984 open on your server.
-- CouchDB is used to store documents and listens on port 5984.
+- Ports 80, 443, 5984 and 6379 open on your server.
+- CouchDB stores documents on port 5984 and Redis provides caching on 6379.
+- CrowdSec monitors Nginx logs for threats.
 
 ### 2. Initial Setup Script
 The `saraiva-vision-setup.sh` script can be used to bring up the containers initially.
@@ -117,12 +118,17 @@ docker-compose logs -f nginx
 docker-compose logs -f certbot
 # Ver logs do CouchDB
 docker-compose logs -f couchdb
+# Ver logs do Redis
+docker-compose logs -f redis
+# Ver decisões do CrowdSec
+docker-compose exec crowdsec cscli decisions list
 
 # Manually renew certificates (usually not needed)
 docker-compose run --rm certbot renew
 
 # Backup dos dados
-Utilize o script `backup.sh` para gerar dumps do banco de dados em `./backups`:
+Utilize o script `backup.sh` para gerar dumps do banco de dados em `./backups`.
+Ele salva MySQL, CouchDB e Redis em um único comando:
 
 ```bash
 ./backup.sh

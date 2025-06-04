@@ -21,11 +21,17 @@ services:
       COUCHDB_USER: ${COUCHDB_USER}
       COUCHDB_PASSWORD: ${COUCHDB_PASSWORD}
 
+  redis:
+    restart: always
+    image: redis:7-alpine
+    volumes:
+      - ./data/redis:/data
+
   openemr:
     restart: always
     image: openemr/openemr:7.0.3
     volumes:
-    - ./data/logs:/var/log
+    - ./data/logs/openemr:/var/log
     - ./data/openemr_sites:/var/www/localhost/htdocs/openemr/sites
     environment:
       MYSQL_HOST: mysql
@@ -34,9 +40,12 @@ services:
       MYSQL_PASS: ${MYSQL_PASS}
       OE_USER: ${OE_USER}
       OE_PASS: ${OE_PASS}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
     - mysql
     - couchdb
+    - redis
 
   nginx:
     restart: always
@@ -48,6 +57,7 @@ services:
     - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     - ./data/certbot/certs:/etc/letsencrypt
     - ./data/certbot/www:/var/www/certbot
+    - ./data/logs/nginx:/var/log/nginx
     depends_on:
     - openemr
 
@@ -60,4 +70,19 @@ services:
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     depends_on:
       - nginx
+
+  php:
+    image: php:8.2-cli-alpine
+    volumes:
+      - ./data/openemr_sites:/var/www/html
+    depends_on:
+      - openemr
+
+  crowdsec:
+    image: crowdsecurity/crowdsec:v1.6.2
+    environment:
+      COLLECTIONS: "crowdsecurity/nginx"
+    volumes:
+      - ./data/logs/nginx:/var/log/nginx:ro
+      - ./data/crowdsec:/var/lib/crowdsec/data
 

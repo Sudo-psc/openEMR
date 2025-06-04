@@ -2,11 +2,11 @@
 
 ## Overview
 
-This project sets up OpenEMR for Clínica Saraiva Vision using Docker Compose. It includes a pre-configured Nginx reverse proxy for HTTPS, initially with self-signed certificates, and now with support for Let's Encrypt.
+This project sets up OpenEMR for Clínica Saraiva Vision using Docker Compose. In addition to MySQL and CouchDB, the stack now includes Redis and a PHP utility container. CrowdSec provides basic threat monitoring while Nginx serves as a reverse proxy with Let's Encrypt support.
 
 ## Key Files
 
-- `docker-compose.yml`: Defines the services (OpenEMR, MySQL, CouchDB, Nginx, Certbot). Uses variables from `.env`.
+- `docker-compose.yml`: Defines the services (OpenEMR, MySQL, CouchDB, Redis, Nginx, PHP, CrowdSec and Certbot). Uses variables from `.env`.
 - `docker/nginx/nginx.conf`: Nginx configuration for reverse proxy, SSL, and Let's Encrypt challenges.
 - `saraiva-vision-setup.sh`: Script to initialize the Docker containers (primarily for initial setup).
 - `README-Saraiva-Vision.md`: Detailed setup and usage instructions.
@@ -113,7 +113,7 @@ This section outlines a potential CI/CD strategy for this project.
 -   Use the `backup.sh` script or another backup tool to export the database regularly.
 -   **SSL Certificates:** Now managed by Let's Encrypt. Ensure renewal process is monitored.
 -   **Downtime:** `docker-compose up -d` can cause brief downtime. For zero-downtime, consider blue/green deployments or load balancing with multiple instances.
--   **Monitoring & Logging:** Implement robust monitoring and centralized logging for production.
+-   **Monitoring & Logging:** Implement robust monitoring and centralized logging for production. This project includes [CrowdSec](https://www.crowdsec.net/) watching the Nginx logs and blocking malicious IPs automatically.
 
 ## Development Environment
 - For initial setup, you can still use `./saraiva-vision-setup.sh` but be aware it's now configured for Let's Encrypt.
