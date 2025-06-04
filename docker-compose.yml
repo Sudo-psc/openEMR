@@ -52,6 +52,12 @@ services:
     depends_on:
       - nginx
 
+  php-fpm:
+    image: php:8.2-fpm-alpine
+    restart: always
+    volumes:
+      - ./php:/var/www/html
+
 volumes:
   logvolume01: {}
   sitevolume: {}
