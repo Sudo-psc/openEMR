@@ -1,15 +1,15 @@
-# OpenEMR para Clínica Saraiva Vision - Configuração Oftalmológica
+# OpenEMR para Clínica de Oftalmologia - Configuração
 
 ## Instalação e Configuração
 
 ### 1. Prerequisites
-- A domain name (e.g., `emr.saraivavision.com.br`) pointing to your server's public IP address.
+- A domain name (e.g., `openemr.example.com`) pointing to your server's public IP address.
 - Ports 80 and 443 open on your server.
 
 ### 2. Initial Setup Script
-The `saraiva-vision-setup.sh` script can be used to bring up the containers initially.
+The `setup.sh` script can be used to bring up the containers initially.
 ```bash
-./saraiva-vision-setup.sh
+./setup.sh
 ```
 This will start all services defined in `docker-compose.yml`.
 
@@ -21,7 +21,7 @@ This setup uses Let's Encrypt for SSL certificates. After running the setup scri
    ```bash
    docker-compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot \
        --email philipe_cruz@outlook.com --agree-tos --no-eff-email \
-       -d emr.saraivavision.com.br
+       -d openemr.example.com
    ```
 
    **b. Restart Nginx:**
@@ -39,21 +39,21 @@ This setup uses Let's Encrypt for SSL certificates. After running the setup scri
    ```
 
 ### 4. Acesso ao Sistema
-- **URL HTTPS**: `https://emr.saraivavision.com.br` (Recomendado para produção; usa Let's Encrypt)
-- **URL HTTP**: `http://emr.saraivavision.com.br` (Produção) ou `http://localhost` (Local/desenvolvimento)
+- **URL HTTPS**: `https://openemr.example.com` (Recomendado para produção; usa Let's Encrypt)
+- **URL HTTP**: `http://openemr.example.com` (Produção) ou `http://localhost` (Local/desenvolvimento)
 - **Usuário**: admin
 - **Senha**: pass
 
-**Nota sobre `https://localhost`**: Acessar `https://localhost` provavelmente mostrará avisos de certificado, pois o certificado Let's Encrypt é para `emr.saraivavision.com.br`. Para acesso local, prefira `http://localhost`.
+**Nota sobre `https://localhost`**: Acessar `https://localhost` provavelmente mostrará avisos de certificado, pois o certificado Let's Encrypt é para `openemr.example.com`. Para acesso local, prefira `http://localhost`.
 
 ## Segurança SSL/HTTPS (Let's Encrypt)
 
 ### Características de Segurança:
-- **Let's Encrypt Certificates**: Trusted SSL certificates for `emr.saraivavision.com.br`.
+- **Let's Encrypt Certificates**: Trusted SSL certificates for `openemr.example.com`.
 - **Automated Renewal**: Certbot service automatically renews certificates.
 - **Protocolos seguros** TLS 1.2 e 1.3.
 - **Headers de segurança** configurados.
-- **Content Security Policy (CSP)**: `upgrade-insecure-requests` para `https://emr.saraivavision.com.br` para ajudar a prevenir conteúdo misto.
+- **Content Security Policy (CSP)**: `upgrade-insecure-requests` para `https://openemr.example.com` para ajudar a prevenir conteúdo misto.
 - **Proxy reverso nginx** for managing SSL and serving OpenEMR.
 
 ### For Production:
@@ -139,7 +139,7 @@ echo "Restauração concluída"
 ## Próximos Passos
 
 1. Complete os passos de geração inicial de certificados descritos acima.
-2. Acesse o OpenEMR em `https://emr.saraivavision.com.br` e conclua o assistente de configuração.
+2. Acesse o OpenEMR em `https://openemr.example.com` e conclua o assistente de configuração.
 3. Configure os usuários específicos da clínica.
 4. Importe os templates de exames oftalmológicos.
 5. Configure o agendamento para diferentes tipos de consulta.

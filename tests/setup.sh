@@ -7,7 +7,7 @@ rm -rf "$TMP"
 mkdir -p "$TMP/bin"
 
 # Test: fails when docker-compose is missing
-if env -i PATH="/usr/bin" ./saraiva-vision-setup.sh >"$TMP/out" 2>&1; then
+if env -i PATH="/usr/bin" ./setup.sh <<<"" >"$TMP/out" 2>&1; then
   echo "Expected failure when docker-compose is missing"
   exit 1
 fi
@@ -23,7 +23,13 @@ fi
 exit 0
 STUB
 chmod +x "$TMP/bin/docker-compose"
-PATH="$(pwd)/$TMP/bin:$PATH" ./saraiva-vision-setup.sh >"$TMP/out" 2>&1
+PATH="$(pwd)/$TMP/bin:$PATH" ./setup.sh <<EOF >"$TMP/out" 2>&1
+openemr.test
+root
+dbpass
+admin
+adminpass
+EOF
 grep -q "Containers iniciados" "$TMP/out"
 
-echo "saraiva-vision-setup.sh tests passed"
+echo "setup.sh tests passed"
