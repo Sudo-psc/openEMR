@@ -121,7 +121,15 @@ docker-compose run --rm certbot renew
 
 ## Backup e Restauração de Dados
 
+Para gerar um backup local execute:
 
+```bash
+./backup.sh
+```
+
+Se a variável `RCLONE_REMOTE` estiver definida e o [rclone](https://rclone.org)
+estiver configurado, o arquivo será enviado para o destino especificado
+(exemplo: `s3:meubucket/backups`).
 
 Para restaurar um backup existente (substitua `arquivo_de_backup.sql.gz` pelo nome do arquivo desejado):
 
