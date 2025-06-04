@@ -4,6 +4,15 @@ This repository provides a simple Docker Compose configuration for [OpenEMR](htt
 
 ## Getting Started
 
+On Ubuntu systems you can run the helper script `ubuntu-setup.sh` to install
+Docker dependencies, configure the firewall and start the containers:
+
+```bash
+sudo ./ubuntu-setup.sh
+```
+
+If you prefer to set things up manually:
+
 1. Copy `.env.example` to `.env` and set strong passwords for the database and initial OpenEMR user.
 2. Start the services:
    ```bash
