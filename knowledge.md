@@ -2,18 +2,18 @@
 
 ## Overview
 
-This project sets up OpenEMR for Clínica Saraiva Vision using Docker Compose. It includes a pre-configured Nginx reverse proxy that supports both HTTP and HTTPS access, with self-signed certificates as fallback and optional Let's Encrypt support.
+This project sets up OpenEMR for a generic ophthalmology clinic using Docker Compose. It includes a pre-configured Nginx reverse proxy that supports both HTTP and HTTPS access, with self-signed certificates as fallback and optional Let's Encrypt support.
 
 ## Key Files
-- `README-Saraiva-Vision.md`: Detailed setup and usage instructions.
+- `README-Ophthalmology.md`: Detailed setup and usage instructions.
 
 ## Current SSL/HTTPS Setup
 
 The system is currently configured to use **self-signed certificates** for immediate HTTPS access. This allows both HTTP and HTTPS to work without requiring Let's Encrypt setup.
 
 **Current Access URLs:**
-- **HTTP**: `http://localhost` (Local) or `http://emr.saraivavision.com.br` (Production)
-- **HTTPS**: `https://localhost` or `https://emr.saraivavision.com.br` (Uses self-signed certificates - browsers will show security warnings)
+- **HTTP**: `http://localhost` (Local) or `http://openemr.example.com` (Production)
+- **HTTPS**: `https://localhost` or `https://openemr.example.com` (Uses self-signed certificates - browsers will show security warnings)
 
 **Configuration Details:**
 - Uses `nginx-fallback.conf` which includes self-signed certificates
@@ -26,7 +26,7 @@ The system is currently configured to use **self-signed certificates** for immed
 To upgrade to Let's Encrypt certificates (for production without browser warnings):
 
 **Prerequisites:**
-- The domain `emr.saraivavision.com.br` must have its DNS A record pointing to the public IP address of the server.
+- The domain `openemr.example.com` must have its DNS A record pointing to the public IP address of the server.
 - Port 80 and 443 must be open on the server.
 
 **Steps to Enable Let's Encrypt:**
@@ -42,7 +42,7 @@ To upgrade to Let's Encrypt certificates (for production without browser warning
    ```bash
    docker-compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot \
        --email philipe_cruz@outlook.com --agree-tos --no-eff-email \
-       -d emr.saraivavision.com.br
+       -d openemr.example.com
    ```
 
 3. **Restart Nginx:**
@@ -107,7 +107,7 @@ This section outlines a potential CI/CD strategy for this project.
 -   **Monitoring & Logging:** Implement robust monitoring and centralized logging for production.
 
 ## Development Environment
-- For immediate setup, use `./saraiva-vision-setup.sh` which now works with self-signed certificates.
+ - For immediate setup, use `./setup.sh` which works with self-signed certificates.
 - Access via `http://localhost` for HTTP or `https://localhost` for HTTPS (with browser warnings).
 - Default OpenEMR credentials: `admin`/`pass`.
 

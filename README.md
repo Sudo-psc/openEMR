@@ -13,10 +13,10 @@ This repository provides a simple Docker Compose configuration for [OpenEMR](htt
    ```bash
    docker-compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot \
        --email you@example.com --agree-tos --no-eff-email \
-       -d emr.saraivavision.com.br
+       -d openemr.example.com
    docker-compose restart nginx
    ```
-4. Access `https://emr.saraivavision.com.br` and complete the setup wizard.
+4. Access `https://openemr.example.com` and complete the setup wizard.
 5. To keep your installation up to date run:
    ```bash
    ./update.sh
@@ -66,4 +66,4 @@ test. The smoke test spins up the services with the example environment file,
 runs the `backup.sh` script and then shuts everything down. Use this workflow as
 a starting point for automated deployments.
 
-For more detailed instructions, see `README-Saraiva-Vision.md`.
+For more detailed instructions, see `README-Ophthalmology.md`.

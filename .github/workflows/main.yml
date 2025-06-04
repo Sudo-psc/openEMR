@@ -23,7 +23,7 @@ jobs:
 
     - name: Lint setup script
       run: |
-        shellcheck saraiva-vision-setup.sh update.sh backup.sh
+        shellcheck setup.sh update.sh backup.sh
 
     - name: Run smoke tests
       run: |
