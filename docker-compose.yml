@@ -38,6 +38,7 @@ services:
     - ./ssl/openemr.key:/etc/ssl/private/openemr.key:ro
     - certbot_certs:/etc/letsencrypt
     - certbot_www:/var/www/certbot
+          - ./nginx/health.html:/opt/health_status/health.html:ro # New mount for health.html
     depends_on:
     - openemr
 
