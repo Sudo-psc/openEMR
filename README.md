@@ -1,6 +1,6 @@
 # OpenEMR Docker Setup
 
-This repository provides a simple Docker Compose configuration for [OpenEMR](https://www.open-emr.org/). Nginx acts as a reverse proxy with Let's Encrypt support.
+This repository provides a simple Docker Compose configuration for [OpenEMR](https://www.open-emr.org/). Nginx acts as a reverse proxy with Let's Encrypt support and Redis is used for PHP session storage.
 
 ## Getting Started
 
@@ -9,6 +9,7 @@ This repository provides a simple Docker Compose configuration for [OpenEMR](htt
    ```bash
    docker-compose up -d
    ```
+   The Redis service will automatically be used by PHP to store sessions.
 3. Generate the Let's Encrypt certificate (replace the email address if needed):
    ```bash
    docker-compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot \
@@ -29,9 +30,10 @@ This repository provides a simple Docker Compose configuration for [OpenEMR](htt
 docker/
   nginx/          # Nginx configuration
   ssl/            # Optional self‑signed certificates
+  php/            # Additional PHP configuration (Redis sessions)
 data/
   db/             # MariaDB data
-  logs/           # OpenEMR logs
+  logs/           # OpenEMR logs (rotated via docker-compose logging options)
   openemr_sites/  # Persistent OpenEMR site data
   certbot/
     certs/        # Let's Encrypt certificates
@@ -59,6 +61,8 @@ Schedule this script with `cron` to run daily.
 - Start/update services: `docker-compose up -d`
 - Stop services: `docker-compose down`
 - View logs: `docker-compose logs -f`
+  The services use Docker's JSON log driver with rotation (10MB, 3 files).
+  Application logs from OpenEMR are also written to `data/logs`.
 
 ## CI/CD
 
