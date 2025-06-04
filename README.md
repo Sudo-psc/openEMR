@@ -23,6 +23,21 @@ This repository provides a simple Docker Compose configuration for [OpenEMR](htt
    ```
    This pulls the latest images, creates a backup and restarts the services.
 
+## Directory Structure
+
+```
+docker/
+  nginx/          # Nginx configuration
+  ssl/            # Optional self‑signed certificates
+data/
+  db/             # MariaDB data
+  logs/           # OpenEMR logs
+  openemr_sites/  # Persistent OpenEMR site data
+  certbot/
+    certs/        # Let's Encrypt certificates
+    www/          # ACME challenge files
+```
+
 ## Backup
 
 Use the `backup.sh` script to create database dumps in the `./backups` directory.

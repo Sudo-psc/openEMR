@@ -128,7 +128,7 @@ Utilize o script `backup.sh` para gerar dumps do banco de dados em `./backups`:
 # Restaurar backup manualmente
 docker-compose exec -i mysql mysql -u "$MYSQL_USER" -p"$MYSQL_PASS" openemr < caminho/para/arquivo.sql
 ```
-**Note:** The `ssl/` directory with self-signed certificates is no longer used by default if Let's Encrypt is active. It can be kept for fallback or local-only development if Nginx config is adjusted.
+**Note:** The `docker/ssl/` directory with self-signed certificates is no longer used by default if Let's Encrypt is active. It can be kept for fallback or local-only development if Nginx config is adjusted.
 
 ## Próximos Passos
 
