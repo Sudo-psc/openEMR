@@ -121,17 +121,7 @@ docker-compose run --rm certbot renew
 
 ## Backup e Restauração de Dados
 
-Para realizar o backup do banco de dados OpenEMR (substitua `openemr` pelas variáveis apropriadas, se diferente):
 
-```bash
-# Cria um backup compactado com timestamp usando variáveis de ambiente ou valores padrão
-TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
-BACKUP_FILE="backup_saraiva_vision_${TIMESTAMP}.sql.gz"
-docker-compose exec -T mysql \
-  mysqldump --user="${MYSQL_USER:-openemr}" --password="${MYSQL_PASSWORD:-openemr}" "${MYSQL_DATABASE:-openemr}" \
-  | gzip > "${BACKUP_FILE}"
-echo "Backup salvo em ${BACKUP_FILE}"
-```
 
 Para restaurar um backup existente (substitua `arquivo_de_backup.sql.gz` pelo nome do arquivo desejado):
 

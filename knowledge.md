@@ -5,11 +5,6 @@
 This project sets up OpenEMR for Clínica Saraiva Vision using Docker Compose. It includes a pre-configured Nginx reverse proxy that supports both HTTP and HTTPS access, with self-signed certificates as fallback and optional Let's Encrypt support.
 
 ## Key Files
-
-- `docker-compose.yml`: Defines the services (OpenEMR, MySQL, Nginx, Certbot) with fallback SSL configuration.
-- `nginx/nginx-fallback.conf`: Nginx configuration using self-signed certificates for immediate HTTPS access.
-- `nginx/nginx.conf`: Original configuration for Let's Encrypt (not currently in use).
-- `saraiva-vision-setup.sh`: Script to initialize the Docker containers.
 - `README-Saraiva-Vision.md`: Detailed setup and usage instructions.
 
 ## Current SSL/HTTPS Setup
@@ -107,8 +102,7 @@ This section outlines a potential CI/CD strategy for this project.
 
 ### Considerations for Production:
 -   **Secrets Management:** Securely manage passwords (e.g., `MYSQL_ROOT_PASSWORD`, `OE_PASS`) using CI/CD environment variables or a secrets manager, rather than hardcoding in `docker-compose.yml` for production.
--   **Database Migrations e Backup de Dados:** OpenEMR lida com seu próprio esquema. Consulte a seção "Backup e Restauração de Dados" no `README-Saraiva-Vision.md` para instruções detalhadas e boas práticas de backup, com timestamp, compactação e restauração segura.
--   **SSL Certificates:** Currently using self-signed certificates. For production, consider upgrading to Let's Encrypt.
+
 -   **Downtime:** `docker-compose up -d` can cause brief downtime. For zero-downtime, consider blue/green deployments or load balancing with multiple instances.
 -   **Monitoring & Logging:** Implement robust monitoring and centralized logging for production.
 
