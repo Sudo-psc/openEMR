@@ -4,7 +4,7 @@ This repository provides a simple Docker Compose configuration for [OpenEMR](htt
 
 ## Getting Started
 
-1. Copy `.env.example` to `.env` and set strong passwords for the database and initial OpenEMR user.
+1. Copy `.env.example` to `.env` and set strong passwords for the database, CouchDB and the initial OpenEMR user.
 2. Start the services:
    ```bash
    docker-compose up -d
@@ -33,10 +33,14 @@ data/
   db/             # MariaDB data
   logs/           # OpenEMR logs
   openemr_sites/  # Persistent OpenEMR site data
+  couchdb/        # CouchDB data for documents
   certbot/
     certs/        # Let's Encrypt certificates
     www/          # ACME challenge files
 ```
+
+CouchDB is included as a document database and listens on port `5984`.
+Credentials are configured via `.env`.
 
 ## Backup
 
@@ -59,6 +63,7 @@ Schedule this script with `cron` to run daily.
 - Start/update services: `docker-compose up -d`
 - Stop services: `docker-compose down`
 - View logs: `docker-compose logs -f`
+- Access CouchDB: `http://localhost:5984` (credentials from `.env`)
 
 ## CI/CD
 
