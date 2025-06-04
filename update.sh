@@ -1,14 +1,26 @@
 #!/bin/bash
 # Update OpenEMR containers with backup
-set -e
 
-echo "Pulling latest images..."
+set -Eeuo pipefail
+
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [update] $*" >&2
+}
+
+abort() {
+    log "ERRO: $*"
+    exit 1
+}
+
+command -v docker-compose >/dev/null 2>&1 || abort "docker-compose nao encontrado"
+
+log "Baixando ultimas imagens..."
 docker-compose pull
 
-echo "Creating database backup before update..."
-./backup.sh
+log "Criando backup do banco de dados antes do update..."
+"$(dirname "$0")/backup.sh"
 
-echo "Applying updates..."
+log "Aplicando atualizacoes..."
 docker-compose up -d --remove-orphans
 
-echo "Update complete."
+log "Update completo."
