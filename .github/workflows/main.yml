@@ -23,11 +23,12 @@ jobs:
 
     - name: Lint setup script
       run: |
-        shellcheck saraiva-vision-setup.sh
+        shellcheck saraiva-vision-setup.sh update.sh backup.sh
 
-    # Placeholder for future tests
-    # - name: Run smoke tests
-    #   run: |
-    #     docker-compose up -d
-    #     # Add commands here to check if services are up, e.g., curl http://localhost
-    #     # docker-compose down
+    - name: Run smoke tests
+      run: |
+        docker-compose --env-file .env.example up -d
+        sleep 30
+        ./backup.sh
+        curl -f http://localhost || (docker-compose logs; exit 1)
+        docker-compose down

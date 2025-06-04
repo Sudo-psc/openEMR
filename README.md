@@ -17,6 +17,11 @@ This repository provides a simple Docker Compose configuration for [OpenEMR](htt
    docker-compose restart nginx
    ```
 4. Access `https://emr.saraivavision.com.br` and complete the setup wizard.
+5. To keep your installation up to date run:
+   ```bash
+   ./update.sh
+   ```
+   This pulls the latest images, creates a backup and restarts the services.
 
 ## Backup
 
@@ -39,5 +44,13 @@ Schedule this script with `cron` to run daily.
 - Start/update services: `docker-compose up -d`
 - Stop services: `docker-compose down`
 - View logs: `docker-compose logs -f`
+
+## CI/CD
+
+A GitHub Actions workflow located at `.github/workflows/main.yml` checks the
+Docker Compose configuration, lints shell scripts and performs a simple smoke
+test. The smoke test spins up the services with the example environment file,
+runs the `backup.sh` script and then shuts everything down. Use this workflow as
+a starting point for automated deployments.
 
 For more detailed instructions, see `README-Saraiva-Vision.md`.
