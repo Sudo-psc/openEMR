@@ -1,6 +1,6 @@
 # OpenEMR Docker Setup
 
-This repository provides a simple Docker Compose configuration for [OpenEMR](https://www.open-emr.org/). Nginx acts as a reverse proxy with Let's Encrypt support.
+This repository provides a Docker Compose setup for [OpenEMR](https://www.open-emr.org/). It includes CouchDB, Redis, a PHP utility container and optional threat monitoring with CrowdSec. Nginx acts as a reverse proxy with Let's Encrypt support.
 
 ## Getting Started
 
@@ -31,20 +31,26 @@ docker/
   ssl/            # Optional self‑signed certificates
 data/
   db/             # MariaDB data
-  logs/           # OpenEMR logs
+  logs/
+    openemr/      # OpenEMR logs
+    nginx/        # Nginx logs monitored by CrowdSec
   openemr_sites/  # Persistent OpenEMR site data
   couchdb/        # CouchDB data for documents
+  redis/          # Redis persistent data
+  crowdsec/       # CrowdSec data and decisions
   certbot/
     certs/        # Let's Encrypt certificates
     www/          # ACME challenge files
 ```
 
-CouchDB is included as a document database and listens on port `5984`.
-Credentials are configured via `.env`.
+The stack exposes CouchDB on port `5984` and Redis on `6379`. CrowdSec monitors
+the Nginx access logs for suspicious activity. Credentials and tuning options
+are configured via `.env`.
 
 ## Backup
 
 Use the `backup.sh` script to create database dumps in the `./backups` directory.
+It exports MySQL, CouchDB and Redis data in one step.
 
 ```bash
 ./backup.sh
@@ -57,6 +63,7 @@ Schedule this script with `cron` to run daily.
 - Passwords are stored in the `.env` file, which is ignored by Git.
 - The Nginx configuration includes security headers and enforces HTTPS.
 - Keep containers and images up to date.
+- CrowdSec monitors Nginx logs and can block malicious IPs automatically.
 
 ## Useful Commands
 
@@ -64,6 +71,8 @@ Schedule this script with `cron` to run daily.
 - Stop services: `docker-compose down`
 - View logs: `docker-compose logs -f`
 - Access CouchDB: `http://localhost:5984` (credentials from `.env`)
+- Access Redis CLI: `docker-compose exec redis redis-cli`
+- View CrowdSec decisions: `docker-compose exec crowdsec cscli decisions list`
 
 ## CI/CD
 
