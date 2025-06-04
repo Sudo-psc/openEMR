@@ -79,3 +79,111 @@ runs the `backup.sh` script and then shuts everything down. Use this workflow as
 a starting point for automated deployments.
 
 For more detailed instructions, see `README-Ophthalmology.md`.
+
+## Health Monitoring
+
+### Overview
+The `health_monitor.sh` script is designed to perform regular checks on the vital components of the OpenEMR Docker deployment, including the OpenEMR application itself, the MySQL database, Nginx reverse proxy, and Certbot certificate renewal status. It can log its findings and send email alerts if any checks fail.
+
+### Prerequisites
+The following tools and conditions are required on the system where `health_monitor.sh` is executed:
+
+*   **`bash`**: The script is written in bash.
+*   **`curl`**: Used for HTTP checks (OpenEMR application, Nginx health endpoint).
+*   **`docker`**: Required to interact with the Docker daemon to check container statuses (Nginx process, MySQL, Certbot logs) and execute commands within containers. The user running the script must have permissions to use Docker (e.g., be part of the `docker` group).
+*   **`openssl`**: Needed for checking SSL certificate validity and expiry dates.
+*   **`mailutils`** (or an equivalent package providing the `mail` command): Required if email alerts are desired.
+*   **Running Containers**: The OpenEMR, MySQL, Nginx, and Certbot Docker containers, as defined in `docker-compose.yml`, should be running.
+
+### Configuration
+The `health_monitor.sh` script is configured primarily through environment variables. Default values are provided for most settings, but critical items like passwords and email recipients must be set.
+
+Key environment variables:
+
+*   `OPENEMR_URL`: URL of the OpenEMR login page. (Default: `https://emr.saraivavision.com.br`)
+*   `MYSQL_CONTAINER_NAME`: Name of the MySQL Docker container. (Default: `mysql`)
+*   `DB_USER`: MySQL user for the database connectivity check. (Default: `openemr` or the value of `MYSQL_USER` if set)
+*   `DB_PASS`: MySQL password for `DB_USER`. **Must be set in the environment.** (This is typically the same as `MYSQL_PASS` from your `.env` file).
+*   `MYSQL_ROOT_PASSWORD`: Root password for MySQL. Used as a fallback for the MySQL ping check if the `DB_USER` check fails and `DB_USER` is not 'root'.
+*   `NGINX_CONTAINER_NAME`: Name of the Nginx Docker container. (Default: `nginx`)
+*   `NGINX_HEALTH_URL_INTERNAL`: URL to check the Nginx health endpoint. (Default: `http://localhost/health.html` - this assumes Nginx's port 80 is mapped to the host's port 80 and the `health.html` endpoint is configured).
+*   `SSL_DOMAIN_TO_CHECK`: The domain for which the SSL certificate's validity is checked. (Default: `emr.saraivavision.com.br`)
+*   `SSL_CERT_WARN_DAYS`: Number of days before SSL certificate expiry to trigger a warning. (Default: `30`)
+*   `CERTBOT_CONTAINER_NAME`: Name of the Certbot Docker container. (Default: `certbot`)
+*   `CERTBOT_LOG_LINES_TO_CHECK`: Number of recent Certbot log lines to inspect for errors or success. (Default: `50`)
+*   `ALERT_EMAIL_RECIPIENT`: Email address to which alert notifications will be sent. **Must be set in the environment for email alerts to function.**
+*   `ALERT_EMAIL_SUBJECT_PREFIX`: Prefix for the subject line of alert emails. (Default: `[HealthMonitor Alert]`)
+
+Example of running the script with environment variables:
+```bash
+export DB_PASS="your_mysql_openemr_user_password"
+export MYSQL_ROOT_PASSWORD="your_mysql_root_password"
+export ALERT_EMAIL_RECIPIENT="sysadmin@example.com"
+./health_monitor.sh
+```
+
+### Manual Execution
+1.  Make the script executable:
+    ```bash
+    chmod +x health_monitor.sh
+    ```
+2.  Run the script (ensure required environment variables are set as shown above):
+    ```bash
+    ./health_monitor.sh
+    ```
+
+### Automated Scheduling with Cron
+To run the health monitor automatically, you can schedule it using `cron`.
+
+1.  **Create a wrapper script** (recommended for managing environment variables):
+    Save the following as `/path/to/your_project/run_health_monitor_cron.sh`:
+    ```bash
+    #!/bin/bash
+
+    # Load environment variables if you use a .env file (optional, ensure it's secure)
+    # if [ -f /path/to/your_project/.env ]; then
+    #   export $(cat /path/to/your_project/.env | sed 's/#.*//g' | xargs)
+    # fi
+
+    # Explicitly set required variables for the health monitor
+    export DB_PASS="your_mysql_openemr_user_password" # Or source from a secure location
+    export MYSQL_ROOT_PASSWORD="your_mysql_root_password" # Or source
+    export ALERT_EMAIL_RECIPIENT="sysadmin@example.com"
+    # Add any other environment variables your health_monitor.sh script might need
+    # export OPENEMR_URL="https://your.emr.domain"
+    # export SSL_DOMAIN_TO_CHECK="your.emr.domain"
+
+    # Navigate to the script's directory (optional, but good practice if script uses relative paths)
+    # cd /path/to/your_project/
+
+    # Execute the health monitor script, appending output to a log file
+    /path/to/your_project/health_monitor.sh >> /var/log/health_monitor.log 2>&1
+    ```
+    Make the wrapper script executable: `chmod +x /path/to/your_project/run_health_monitor_cron.sh`
+
+2.  **Edit your crontab**:
+    Open your crontab for editing: `crontab -e`
+    Add a line to schedule the wrapper script (e.g., to run every 15 minutes):
+    ```cron
+    */15 * * * * /path/to/your_project/run_health_monitor_cron.sh
+    ```
+    *Explanation of the cron entry:*
+    *   `*/15 * * * *`: Runs the command every 15 minutes.
+    *   `/path/to/your_project/run_health_monitor_cron.sh`: The command to execute.
+
+    **Important Considerations for Cron:**
+    *   **PATH Variable**: Cron jobs often have a minimal `PATH`. Ensure all commands used by your script (`docker`, `curl`, `mail`, `openssl`, `date`, `grep`, etc.) are either called with their full paths within `health_monitor.sh` or that the `PATH` is correctly set in the wrapper script or crontab. The `health_monitor.sh` generally calls commands without full paths, assuming they are in the standard system PATH.
+    *   **Environment Variables**: Cron jobs do not inherit the environment of your interactive shell. They *must* be set explicitly in the crontab line or within the script being called (the wrapper script approach is cleaner for this).
+    *   **Logging**: Redirecting standard output (`>>`) and standard error (`2>&1`) to a log file (e.g., `/var/log/health_monitor.log`) is crucial for debugging and auditing.
+
+### Interpreting Output
+*   The script logs its actions and check results to standard output. If run via cron, this output will be directed to the specified log file.
+*   Each check performed will have a log message indicating its status (e.g., "OpenEMR application is UP", "MySQL database is DOWN").
+*   If any check fails, a "FAILURE DETECTED" message is logged, and details of the failure are added to a list.
+*   At the end of its execution:
+    *   If all checks passed, it logs "All checks passed. No alert necessary."
+    *   If any checks failed and `ALERT_EMAIL_RECIPIENT` is set (and `mail` command is available), an email alert summarizing the failures is sent.
+    *   If alerts are detected but email cannot be sent (due to missing configuration or `mail` command), a summary of failures is logged to standard output.
+*   The script exits with a status code:
+    *   `0`: All checks passed successfully.
+    *   `1`: One or more checks failed. This allows cron or other automation tools to detect script failure.
