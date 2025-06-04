@@ -23,7 +23,17 @@ if ! command -v docker >/dev/null; then
     apt-get install -y docker.io docker-compose
 fi
 
-command -v docker-compose >/dev/null || abort "docker-compose installation failed"
+get_dc_cmd() {
+    if docker compose version >/dev/null 2>&1; then
+        echo "docker compose"
+    elif command -v docker-compose >/dev/null 2>&1; then
+        echo "docker-compose"
+    else
+        return 1
+    fi
+}
+
+DC_CMD=$(get_dc_cmd) || abort "docker-compose installation failed"
 
 if ! systemctl is-active --quiet docker; then
     log "Starting Docker service..."
@@ -40,7 +50,7 @@ if [ ! -f .env ]; then
 fi
 
 log "Starting OpenEMR containers..."
-docker-compose up -d
+$DC_CMD up -d
 
 log "Waiting for containers to initialize..."
 sleep 30
@@ -49,4 +59,4 @@ log "OpenEMR is now accessible at:"
 log "- http://localhost"
 log "- https://localhost (self-signed certificate)"
 log "Default credentials: admin / pass"
-log "To stop the environment run: docker-compose down"
+log "To stop the environment run: $DC_CMD down"

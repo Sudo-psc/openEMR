@@ -10,7 +10,17 @@ abort() {
     exit 1
 }
 
-command -v docker-compose >/dev/null 2>&1 || abort "docker-compose nao encontrado"
+get_dc_cmd() {
+    if docker compose version >/dev/null 2>&1; then
+        echo "docker compose"
+    elif command -v docker-compose >/dev/null 2>&1; then
+        echo "docker-compose"
+    else
+        return 1
+    fi
+}
+
+DC_CMD=$(get_dc_cmd) || abort "docker-compose nao encontrado"
 
 # Solicitar dados ao usuario
 read -rp "Domínio do OpenEMR (ex: openemr.example.com): " DOMAIN
@@ -34,7 +44,7 @@ for f in nginx/nginx.conf nginx/nginx-fallback.conf; do
 done
 
 log "Iniciando containers..."
-docker-compose up -d
+$DC_CMD up -d
 
 log "Aguardando inicializacao dos containers..."
 sleep 30
@@ -45,6 +55,6 @@ log "- OpenEMR HTTP (Producao): http://${DOMAIN}"
 log "- OpenEMR HTTPS (Local): https://localhost (certificado autoassinado - avisos do navegador)"
 log "- OpenEMR HTTPS (Producao): https://${DOMAIN} (certificado autoassinado - avisos do navegador)"
 log ""
-log "Para parar os containers: docker-compose down"
-log "Para ver logs: docker-compose logs -f"
-log "Para ver logs do nginx: docker-compose logs -f nginx"
+log "Para parar os containers: $DC_CMD down"
+log "Para ver logs: $DC_CMD logs -f"
+log "Para ver logs do nginx: $DC_CMD logs -f nginx"

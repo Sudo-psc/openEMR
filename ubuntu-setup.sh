@@ -33,7 +33,17 @@ if ! systemctl is-active --quiet docker; then
     systemctl start docker
 fi
 
-command -v docker-compose >/dev/null 2>&1 || abort "docker-compose not found"
+get_dc_cmd() {
+    if docker compose version >/dev/null 2>&1; then
+        echo "docker compose"
+    elif command -v docker-compose >/dev/null 2>&1; then
+        echo "docker-compose"
+    else
+        return 1
+    fi
+}
+
+DC_CMD=$(get_dc_cmd) || abort "docker-compose not found"
 
 # Ensure .env exists
 if [ ! -f .env ]; then
@@ -52,6 +62,6 @@ if [ -x ./firewall-setup.sh ]; then
 fi
 
 log "Starting OpenEMR containers..."
-docker-compose up -d
+$DC_CMD up -d
 
 log "Setup complete. Access OpenEMR at http://localhost"
