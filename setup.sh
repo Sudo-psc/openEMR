@@ -28,6 +28,10 @@ read -rp "Senha do MySQL root: " MYSQL_ROOT_PASSWORD
 read -rp "Senha do MySQL para o usuário openemr: " MYSQL_PASS
 read -rp "Usuário inicial do OpenEMR: " OE_USER
 read -rp "Senha inicial do OpenEMR: " OE_PASS
+read -rp "Usuário do CouchDB (opcional): " COUCHDB_USER
+if [ -n "$COUCHDB_USER" ]; then
+    read -rp "Senha do CouchDB: " COUCHDB_PASSWORD
+fi
 
 MYSQL_USER="openemr"
 
@@ -38,6 +42,13 @@ MYSQL_PASS=${MYSQL_PASS}
 OE_USER=${OE_USER}
 OE_PASS=${OE_PASS}
 EOFENV
+
+if [ -n "${COUCHDB_USER:-}" ]; then
+cat >> .env <<EOFENV
+COUCHDB_USER=${COUCHDB_USER}
+COUCHDB_PASSWORD=${COUCHDB_PASSWORD}
+EOFENV
+fi
 
 for f in nginx/nginx.conf nginx/nginx-fallback.conf; do
     sed -i "s/openemr.example.com/${DOMAIN}/g" "$f"

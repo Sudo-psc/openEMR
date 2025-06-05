@@ -22,6 +22,10 @@ read -rp "Senha do MySQL root: " MYSQL_ROOT_PASSWORD
 read -rp "Senha do MySQL para o usuário openemr: " MYSQL_PASS
 read -rp "Usuário inicial do OpenEMR: " OE_USER
 read -rp "Senha inicial do OpenEMR: " OE_PASS
+read -rp "Usuário do CouchDB (opcional): " COUCHDB_USER
+if [ -n "$COUCHDB_USER" ]; then
+    read -rp "Senha do CouchDB: " COUCHDB_PASSWORD
+fi
 read -rp "Destino rclone para backups (opcional): " RCLONE_REMOTE
 
 log "Updating package index..."
@@ -63,6 +67,12 @@ MYSQL_PASS=${MYSQL_PASS}
 OE_USER=${OE_USER}
 OE_PASS=${OE_PASS}
 EOF
+if [ -n "${COUCHDB_USER:-}" ]; then
+    cat >> .env <<EOF
+COUCHDB_USER=${COUCHDB_USER}
+COUCHDB_PASSWORD=${COUCHDB_PASSWORD}
+EOF
+fi
 if [ -n "${RCLONE_REMOTE}" ]; then
     echo "RCLONE_REMOTE=${RCLONE_REMOTE}" >> .env
 fi

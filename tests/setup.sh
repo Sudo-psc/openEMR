@@ -29,6 +29,7 @@ root
 dbpass
 admin
 adminpass
+
 EOF
 grep -q "Containers iniciados" "$TMP/out"
 
