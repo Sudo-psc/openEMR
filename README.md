@@ -65,6 +65,18 @@ Run `./firewall-setup.sh` as root to open ports 80 and 443 for the Docker contai
 - Stop services: `docker-compose down`
 - View logs: `docker-compose logs -f`
 
+### Suppressing Apache ServerName Warning
+
+If you see a message like:
+
+```
+AH00558: httpd: Could not reliably determine the server's fully qualified domain name
+```
+
+Apache needs a `ServerName` directive. The compose file mounts
+`apache/servername.conf` into the OpenEMR container to set this to `localhost`.
+Edit that file if you want to use a different domain name.
+
 ## Troubleshooting 502 Bad Gateway
 A 502 response from Nginx usually means it cannot reach the OpenEMR container or the application failed to start.
 Check the following:
