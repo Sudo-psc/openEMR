@@ -10,8 +10,47 @@ domain name and the main environment variables before generating the `.env`
 file and optionally configuring the firewall:
 
 ```bash
-sudo ./ubuntu-setup.sh
+  sudo ./ubuntu-setup.sh
+  ```
+
+### OpenEMR Env Installer
+
+For a development or testing environment that includes Docker and other base
+tools, you can use the **OpenEMR Env Installer**. Download the script and run it
+as shown below:
+
+```bash
+curl -L https://raw.githubusercontent.com/openemr/openemr-devops/master/utilities/openemr-env-installer/openemr-env-installer > openemr-env-installer
+chmod +x openemr-env-installer
+./openemr-env-installer
 ```
+
+The script installs git, Docker, docker-compose, `openemr-cmd`, minikube and
+`kubectl`.
+
+```
+bash openemr-env-installer <code location> <github account>
+```
+
+Example:
+
+```bash
+bash openemr-env-installer /home/test/code testuser
+```
+
+**NOTE1:** Ensure you have forks of OpenEMR and `openemr-devops` created before
+running the installer.
+
+**NOTE2:** If you plan to use minikube the host system should have:
+
+- 2 CPUs or more
+- 2GB of free memory
+- 20GB of free disk space
+- Internet connection
+- A container or virtual machine manager such as Docker, Hyperkit, Hyper-V,
+  KVM, Parallels, Podman, VirtualBox or VMWare.
+
+See [openemr-env-installer.md](openemr-env-installer.md) for full documentation.
 
 If you prefer to set things up manually:
 
