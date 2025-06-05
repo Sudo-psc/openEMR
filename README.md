@@ -71,6 +71,15 @@ Run `./firewall-setup.sh` as root to open ports 80 and 443 for the Docker contai
 - Stop services: `docker-compose down`
 - View logs: `docker-compose logs -f`
 
+### openemr-cmd Utility
+
+This repository ships with the `openemr-cmd` helper script from the
+[openemr-devops](https://github.com/openemr/openemr-devops) project.
+During setup the script is installed to `~/.local/bin` so it is
+available in your shell. Run `openemr-cmd -h` for an overview of
+available subcommands that make it easier to manage the Docker
+environment.
+
 ### Suppressing Apache ServerName Warning
 
 If you see a message like:

@@ -23,6 +23,9 @@ SSL_CERT_WARN_DAYS="${SSL_CERT_WARN_DAYS:-30}" # Days before SSL certificate exp
 CERTBOT_CONTAINER_NAME="${CERTBOT_CONTAINER_NAME:-certbot}" # Name of the Certbot Docker container. Default: certbot
 CERTBOT_LOG_LINES_TO_CHECK="${CERTBOT_LOG_LINES_TO_CHECK:-50}" # Number of recent Certbot log lines to inspect. Default: 50
 
+# Path to openemr-cmd if installed
+OPENEMR_CMD_PATH=$(command -v openemr-cmd || true)
+
 ALERT_EMAIL_RECIPIENT="${ALERT_EMAIL_RECIPIENT:-}" # Email address for sending alerts. MUST BE SET for email notifications to work.
 ALERT_EMAIL_SUBJECT_PREFIX="${ALERT_EMAIL_SUBJECT_PREFIX:-[HealthMonitor Alert]}" # Subject prefix for alert emails. Default: [HealthMonitor Alert]
 # Prerequisite for email alerts: 'mail' command (from mailutils or similar package) must be installed and configured on the system running this script.
@@ -321,6 +324,14 @@ Please investigate.
     fi
 }
 
+# If openemr-cmd is available, log current container status via the utility
+log_docker_status_with_openemr_cmd() {
+    if [ -n "$OPENEMR_CMD_PATH" ]; then
+        log_message "Listing container status via openemr-cmd..."
+        openemr-cmd docker-names || true
+    fi
+}
+
 check_openemr
 OPENEMR_STATUS=$?
 # TODO: Use OPENEMR_STATUS for alerting
@@ -344,6 +355,9 @@ NGINX_SSL_STATUS=$?
 check_certbot_logs
 CERTBOT_STATUS=$?
 # TODO: Use CERTBOT_STATUS for alerting
+
+# Optional: log container status using openemr-cmd if available
+log_docker_status_with_openemr_cmd
 
 # --- Finalize and Report ---
 send_alert_email
