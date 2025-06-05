@@ -31,6 +31,8 @@ If you prefer to set things up manually:
    ./update.sh
    ```
    This pulls the latest images, creates a backup and restarts the services.
+6. The compose file also includes a `php-fpm` service. Place your PHP files in
+   the `./php` directory to have them served by this container.
 
 ## Backup
 
