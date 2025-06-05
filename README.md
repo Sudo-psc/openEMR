@@ -35,6 +35,9 @@ If you prefer to set things up manually:
    This pulls the latest images, creates a backup and restarts the services.
 6. The compose file also includes a `php-fpm` service. Place your PHP files in
    the `./php` directory to have them served by this container.
+7. A `couchdb` service is provided for modules that require CouchDB. Set
+   `COUCHDB_USER` and `COUCHDB_PASSWORD` in your `.env` file to enable it. The
+   database is exposed on port `5984`.
 
 ## Backup
 
