@@ -16,6 +16,14 @@ if [ "$(id -u)" -ne 0 ]; then
     abort "Please run as root or with sudo"
 fi
 
+# Prompt for configuration values
+read -rp "Domínio do OpenEMR (ex: openemr.example.com): " DOMAIN
+read -rp "Senha do MySQL root: " MYSQL_ROOT_PASSWORD
+read -rp "Senha do MySQL para o usuário openemr: " MYSQL_PASS
+read -rp "Usuário inicial do OpenEMR: " OE_USER
+read -rp "Senha inicial do OpenEMR: " OE_PASS
+read -rp "Destino rclone para backups (opcional): " RCLONE_REMOTE
+
 log "Updating package index..."
 apt-get update -y
 
@@ -45,23 +53,38 @@ get_dc_cmd() {
 
 DC_CMD=$(get_dc_cmd) || abort "docker-compose not found"
 
-# Ensure .env exists
-if [ ! -f .env ]; then
-    if [ -f .env.example ]; then
-        log "Creating .env from example"
-        cp .env.example .env
-    else
-        abort ".env.example not found"
-    fi
+
+# Create .env file from provided values
+log "Generating .env file..."
+cat > .env <<EOF
+MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+MYSQL_USER=openemr
+MYSQL_PASS=${MYSQL_PASS}
+OE_USER=${OE_USER}
+OE_PASS=${OE_PASS}
+EOF
+if [ -n "${RCLONE_REMOTE}" ]; then
+    echo "RCLONE_REMOTE=${RCLONE_REMOTE}" >> .env
 fi
 
-# Apply basic firewall rules
+# Replace domain in Nginx configs
+for f in nginx/nginx.conf nginx/nginx-fallback.conf; do
+    sed -i "s/openemr.example.com/${DOMAIN}/g" "$f"
+done
+
+# Apply basic firewall rules if requested
 if [ -x ./firewall-setup.sh ]; then
-    log "Applying firewall rules..."
-    ./firewall-setup.sh
+    read -rp "Configurar firewall para liberar portas 80 e 443? [s/N] " FW_CHOICE
+    if [[ $FW_CHOICE =~ ^[sSyY]$ ]]; then
+        log "Applying firewall rules..."
+        ./firewall-setup.sh
+    fi
 fi
 
 log "Starting OpenEMR containers..."
 $DC_CMD up -d
 
-log "Setup complete. Access OpenEMR at http://localhost"
+log "Setup complete. Access OpenEMR at:"
+log "- HTTP:  http://$DOMAIN"
+log "- HTTPS: https://$DOMAIN (certificado autoassinado inicialmente)"
+

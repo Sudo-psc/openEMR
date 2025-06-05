@@ -28,7 +28,7 @@ PATH="$(pwd)/$TMP/bin:$PATH" BACKUP_DIR="$(pwd)/$TMP/backups" MYSQL_USER=u MYSQL
 # Test: uploads backup when RCLONE_REMOTE is set
 cat <<STUB > "$TMP/bin/rclone"
 #!/bin/bash
-echo "$@" > "$TMP/rclone_args"
+echo "\$@" > "$TMP/rclone_args"
 exit 0
 STUB
 chmod +x "$TMP/bin/rclone"
