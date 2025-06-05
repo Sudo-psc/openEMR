@@ -10,6 +10,17 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
 
+  couchdb:
+    restart: always
+    image: couchdb:3
+    environment:
+      COUCHDB_USER: ${COUCHDB_USER}
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD}
+    volumes:
+      - couchdb_data:/opt/couchdb/data
+    ports:
+      - 5984:5984
+
   openemr:
     restart: always
     image: openemr/openemr:7.0.3
@@ -64,3 +75,4 @@ volumes:
   databasevolume: {}
   certbot_certs: {}
   certbot_www: {}
+  couchdb_data: {}
