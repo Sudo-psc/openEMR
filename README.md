@@ -16,6 +16,9 @@ sudo ./ubuntu-setup.sh
 If you prefer to set things up manually:
 
 1. Copy `.env.example` to `.env` and set strong passwords for the database and initial OpenEMR user.
+   The MySQL service uses the configuration file `./mysql/my.cnf` which disables
+   `io_uring` and native AIO. This prevents warnings such as `io_uring_queue_init()
+   failed with EPERM` on hosts where these features are restricted.
 2. Start the services:
    ```bash
    docker-compose up -d
