@@ -63,6 +63,26 @@ Run `./firewall-setup.sh` as root to open ports 80 and 443 for the Docker contai
 - Stop services: `docker-compose down`
 - View logs: `docker-compose logs -f`
 
+## Troubleshooting 502 Bad Gateway
+A 502 response from Nginx usually means it cannot reach the OpenEMR container or the application failed to start.
+Check the following:
+
+1. Verify all containers are running:
+   ```bash
+   docker-compose ps
+   ```
+   The `openemr`, `mysql` and `nginx` services should be listed as `Up`.
+2. Ensure the `.env` file has valid database credentials. If these values are missing or wrong, the OpenEMR container may exit.
+3. Review container logs for errors:
+   ```bash
+   docker-compose logs openemr
+   docker-compose logs nginx
+   ```
+4. After fixing any issues, restart the services:
+   ```bash
+   docker-compose restart openemr nginx
+   ```
+
 ## Log Monitoring with OpenAI
 
 Use `log-monitor-openai.sh` to summarize container logs with the OpenAI API.
