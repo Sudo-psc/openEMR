@@ -69,3 +69,13 @@ log ""
 log "Para parar os containers: $DC_CMD down"
 log "Para ver logs: $DC_CMD logs -f"
 log "Para ver logs do nginx: $DC_CMD logs -f nginx"
+
+# Install openemr-cmd utilities for convenience
+if [ -f utilities/openemr-cmd ]; then
+    TARGET_DIR="$HOME/.local/bin"
+    mkdir -p "$TARGET_DIR"
+    cp utilities/openemr-cmd "$TARGET_DIR/"
+    cp utilities/openemr-cmd-h "$TARGET_DIR/"
+    chmod +x "$TARGET_DIR/openemr-cmd" "$TARGET_DIR/openemr-cmd-h"
+    log "Utilitários 'openemr-cmd' instalados em $TARGET_DIR"
+fi

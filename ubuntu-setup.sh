@@ -98,3 +98,13 @@ log "Setup complete. Access OpenEMR at:"
 log "- HTTP:  http://$DOMAIN"
 log "- HTTPS: https://$DOMAIN (certificado autoassinado inicialmente)"
 
+# Install openemr-cmd utilities locally for easier management
+if [ -f utilities/openemr-cmd ]; then
+    TARGET_DIR="$HOME/.local/bin"
+    mkdir -p "$TARGET_DIR"
+    cp utilities/openemr-cmd "$TARGET_DIR/"
+    cp utilities/openemr-cmd-h "$TARGET_DIR/"
+    chmod +x "$TARGET_DIR/openemr-cmd" "$TARGET_DIR/openemr-cmd-h"
+    log "Utilitários 'openemr-cmd' instalados em $TARGET_DIR"
+fi
+
