@@ -16,6 +16,7 @@ services:
     volumes:
     - logvolume01:/var/log
     - sitevolume:/var/www/localhost/htdocs/openemr/sites
+    - ./apache/servername.conf:/etc/apache2/conf.d/servername.conf:ro
     environment:
       MYSQL_HOST: mysql
       MYSQL_ROOT_PASS: ${MYSQL_ROOT_PASSWORD}
