@@ -79,3 +79,12 @@ if [ -f utilities/openemr-cmd ]; then
     chmod +x "$TARGET_DIR/openemr-cmd" "$TARGET_DIR/openemr-cmd-h"
     log "Utilitários 'openemr-cmd' instalados em $TARGET_DIR"
 fi
+
+# Install health_monitor.sh for system monitoring
+if [ -f health_monitor.sh ]; then
+    TARGET_DIR="$HOME/.local/bin"
+    mkdir -p "$TARGET_DIR"
+    cp health_monitor.sh "$TARGET_DIR/"
+    chmod +x "$TARGET_DIR/health_monitor.sh"
+    log "Script 'health_monitor.sh' instalado em $TARGET_DIR"
+fi

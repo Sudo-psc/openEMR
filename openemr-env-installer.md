@@ -36,4 +36,20 @@ bash openemr-env-installer /home/test/code testuser
    * 2GB of free memory
    * 20GB of free disk space
    * Internet connection
-   * A container or virtual machine manager such as Docker, Hyperkit, Hyper-V, KVM, Parallels, Podman, VirtualBox or VMWare.
+    * A container or virtual machine manager such as Docker, Hyperkit, Hyper-V, KVM, Parallels, Podman, VirtualBox or VMWare.
+
+## Optional: Install the OpenEMR Monitor
+
+The [OpenEMR Monitor](https://github.com/openemr/openemr-devops/tree/master/utilities/openemr-monitor)
+provides a Prometheus and Grafana based environment for monitoring your
+containers. To download the monitor installer and set it up, run:
+
+```bash
+curl -L https://raw.githubusercontent.com/openemr/openemr-devops/master/utilities/openemr-monitor/monitor-installer > monitor-installer
+chmod +x monitor-installer
+./monitor-installer <install dir> <host ip> <smtp server:port> <sender email> <sender password> <receiver email>
+```
+
+Replace the arguments with the desired installation directory and your email
+settings. The script will download the necessary Compose files and print
+instructions to start the monitoring stack.
