@@ -20,7 +20,28 @@ get_dc_cmd() {
     fi
 }
 
+
 DC_CMD=$(get_dc_cmd) || abort "docker-compose nao encontrado"
+
+# Download and install ophthalmology modules (Eye Exam)
+install_ophthalmology_modules() {
+    if ! command -v docker >/dev/null 2>&1; then
+        log "docker não encontrado; ignorando instalação do Eye Exam"
+        return
+    fi
+    log "Baixando módulo Eye Exam..."
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    curl -fsSL https://github.com/openemr/openemr/archive/refs/heads/master.zip -o "$tmpdir/openemr.zip"
+    unzip -q "$tmpdir/openemr.zip" "openemr-master/interface/forms/eye_mag/*" -d "$tmpdir"
+    local container
+    container=$($DC_CMD ps -q openemr)
+    docker cp "$tmpdir/openemr-master/interface/forms/eye_mag" "$container":/var/www/localhost/htdocs/openemr/interface/forms/
+    docker exec "$container" chown -R www-data:www-data /var/www/localhost/htdocs/openemr/interface/forms/eye_mag
+    rm -rf "$tmpdir"
+    log "Módulo Eye Exam instalado"
+}
+
 
 # Solicitar dados ao usuario
 read -rp "Domínio do OpenEMR (ex: openemr.example.com): " DOMAIN
@@ -69,6 +90,9 @@ log ""
 log "Para parar os containers: $DC_CMD down"
 log "Para ver logs: $DC_CMD logs -f"
 log "Para ver logs do nginx: $DC_CMD logs -f nginx"
+
+# Install Eye Exam and related ophthalmology templates
+install_ophthalmology_modules
 
 # Install openemr-cmd utilities for convenience
 if [ -f utilities/openemr-cmd ]; then
