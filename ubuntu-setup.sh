@@ -11,6 +11,47 @@ abort() {
     exit 1
 }
 
+# Run diagnostics to ensure prerequisites and free required ports
+diagnostics() {
+    log "Executando diagnóstico do sistema..."
+
+    if ! command -v docker >/dev/null 2>&1; then
+        abort "Docker não encontrado"
+    fi
+
+    if ! systemctl is-active --quiet docker; then
+        log "Iniciando serviço Docker..."
+        systemctl start docker
+    fi
+
+    local ports=(80 443)
+    [[ -n "${COUCHDB_USER:-}" ]] && ports+=(5984)
+
+    for port in "${ports[@]}"; do
+        if ss -tulpn | grep -q ":$port " ; then
+            log "Porta $port em uso. Tentando liberar..."
+
+            local containers
+            containers=$(docker ps --filter "publish=$port" -q) || true
+            if [ -n "$containers" ]; then
+                docker stop "$containers"
+                log "Containers Docker parados: $containers"
+            fi
+
+            if command -v lsof >/dev/null 2>&1; then
+                local pids
+                pids=$(lsof -t -i :"$port" || true)
+                if [ -n "$pids" ]; then
+                    kill -9 "$pids" || true
+                    log "Processos finalizados na porta $port: $pids"
+                fi
+            fi
+        fi
+    done
+
+    log "Diagnóstico concluído"
+}
+
 # Require root privileges
 if [ "$(id -u)" -ne 0 ]; then
     abort "Please run as root or with sudo"
@@ -31,7 +72,7 @@ read -rp "Destino rclone para backups (opcional): " RCLONE_REMOTE
 log "Updating package index..."
 apt-get update -y
 
-REQUIRED_PKGS=(docker.io docker-compose)
+REQUIRED_PKGS=(docker.io docker-compose lsof iproute2)
 for pkg in "${REQUIRED_PKGS[@]}"; do
     if ! dpkg -s "$pkg" >/dev/null 2>&1; then
         log "Installing $pkg..."
@@ -44,6 +85,9 @@ if ! systemctl is-active --quiet docker; then
     log "Starting Docker service..."
     systemctl start docker
 fi
+
+# Run diagnostics to check dependencies and free ports
+diagnostics
 
 get_dc_cmd() {
     if docker compose version >/dev/null 2>&1; then
