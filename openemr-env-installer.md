@@ -53,3 +53,6 @@ chmod +x monitor-installer
 Replace the arguments with the desired installation directory and your email
 settings. The script will download the necessary Compose files and print
 instructions to start the monitoring stack.
+
+## Health Monitor Script
+`health_monitor.sh` is included in this repository to verify that the OpenEMR services remain operational. Copy it somewhere in your `$PATH` and run it manually or via `cron` to receive alerts when problems are detected.
