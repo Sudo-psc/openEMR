@@ -296,3 +296,7 @@ After installation the services will be available on the following ports:
 - **Prometheus:** `http://<host_ip>:3001`
 - **cAdvisor:** `http://<host_ip>:3002/metrics`
 - **AlertManager:** `http://<host_ip>:3003`
+
+## Como Contribuir
+
+Consulte o [manual de contribuicao](docs/CONTRIBUICAO.md) para saber como enviar melhorias ao projeto.
