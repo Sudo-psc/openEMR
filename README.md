@@ -2,6 +2,8 @@
 
 This repository provides a simple Docker Compose configuration for [OpenEMR](https://www.open-emr.org/). Nginx acts as a reverse proxy with Let's Encrypt support.
 
+The installation scripts automatically download and install ophthalmology templates, including the **Eye Exam** form.
+
 ## Getting Started
 
 On Ubuntu systems you can run the helper script `ubuntu-setup.sh` to install

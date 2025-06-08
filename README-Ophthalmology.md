@@ -149,7 +149,7 @@ echo "Restauração concluída"
 1. Complete os passos de geração inicial de certificados descritos acima.
 2. Acesse o OpenEMR em `https://openemr.example.com` e conclua o assistente de configuração.
 3. Configure os usuários específicos da clínica.
-4. Importe os templates de exames oftalmológicos.
+4. O script de instalação já baixa e instala automaticamente o módulo **Eye Exam** e os templates oftalmológicos.
 5. Configure o agendamento para diferentes tipos de consulta.
 6. Configure relatórios específicos para oftalmologia.
 7. Integre com equipamentos oftalmológicos (se necessário).

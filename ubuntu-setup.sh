@@ -101,6 +101,25 @@ get_dc_cmd() {
 
 DC_CMD=$(get_dc_cmd) || abort "docker-compose not found"
 
+# Download and install ophthalmology modules (Eye Exam)
+install_ophthalmology_modules() {
+    if ! command -v docker >/dev/null 2>&1; then
+        log "docker não encontrado; ignorando instalação do Eye Exam"
+        return
+    fi
+    log "Baixando módulo Eye Exam..."
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    curl -fsSL https://github.com/openemr/openemr/archive/refs/heads/master.zip -o "$tmpdir/openemr.zip"
+    unzip -q "$tmpdir/openemr.zip" "openemr-master/interface/forms/eye_mag/*" -d "$tmpdir"
+    local container
+    container=$($DC_CMD ps -q openemr)
+    docker cp "$tmpdir/openemr-master/interface/forms/eye_mag" "$container":/var/www/localhost/htdocs/openemr/interface/forms/
+    docker exec "$container" chown -R www-data:www-data /var/www/localhost/htdocs/openemr/interface/forms/eye_mag
+    rm -rf "$tmpdir"
+    log "Módulo Eye Exam instalado"
+}
+
 
 # Create .env file from provided values
 log "Generating .env file..."
@@ -137,6 +156,9 @@ fi
 
 log "Starting OpenEMR containers..."
 $DC_CMD up -d
+
+# Install Eye Exam and related ophthalmology templates
+install_ophthalmology_modules
 
 log "Setup complete. Access OpenEMR at:"
 log "- HTTP:  http://$DOMAIN"
