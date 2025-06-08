@@ -115,3 +115,7 @@ This section outlines a potential CI/CD strategy for this project.
 - Current setup works immediately with self-signed certificates
 - For production without browser warnings, upgrade to Let's Encrypt following the steps above
 - Ensure `docker-compose.yml` environment variables for passwords are secure.
+
+## Monitoring Tools
+- `health_monitor.sh` checks the OpenEMR containers (application, MySQL, Nginx and Certbot) and can send email alerts when failures occur.
+- `openemr-monitor-setup.sh` downloads a Prometheus/Grafana stack from the `openemr-devops` project for advanced metrics.

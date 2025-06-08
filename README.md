@@ -159,6 +159,13 @@ Set `OPENAI_API_KEY` and run:
 ```bash
 OPENAI_API_KEY=your_key ./log-monitor-openai.sh
 ```
+## Running Tests
+
+Run the shell-based test suite to validate the helper scripts:
+```bash
+./run-tests.sh
+```
+
 
 ## CI/CD
 
