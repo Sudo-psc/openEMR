@@ -277,3 +277,22 @@ To run the health monitor automatically, you can schedule it using `cron`.
 *   The script exits with a status code:
     *   `0`: All checks passed successfully.
     *   `1`: One or more checks failed. This allows cron or other automation tools to detect script failure.
+
+## OpenEMR Monitor
+
+The **openemr-monitor-setup.sh** script installs the monitoring stack
+(Grafana, Prometheus, cAdvisor and AlertManager) provided by the
+[openemr-devops](https://github.com/openemr/openemr-devops) project.
+
+Download the script and run it with the required parameters:
+
+```bash
+./openemr-monitor-setup.sh <install_dir> <host_ip> \
+  <smtp_server:port> <sender_email> <sender_password> <receiver_email>
+```
+
+After installation the services will be available on the following ports:
+- **Grafana:** `http://<host_ip>:3000` (login `admin`/`admin`)
+- **Prometheus:** `http://<host_ip>:3001`
+- **cAdvisor:** `http://<host_ip>:3002/metrics`
+- **AlertManager:** `http://<host_ip>:3003`
