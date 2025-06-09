@@ -1,4 +1,6 @@
 # OpenEMR Docker Setup
+[Leia esta documentação em Português](README-pt_BR.md)
+
 
 This repository provides a simple Docker Compose configuration for [OpenEMR](https://www.open-emr.org/). Nginx acts as a reverse proxy with Let's Encrypt support.
 
