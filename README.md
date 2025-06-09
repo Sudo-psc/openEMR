@@ -309,3 +309,11 @@ After installation the services will be available on the following ports:
 ## Como Contribuir
 
 Consulte o [manual de contribuicao](docs/CONTRIBUICAO.md) para saber como enviar melhorias ao projeto.
+
+## Links de Referencia
+
+- [Site oficial do OpenEMR](https://www.open-emr.org/)
+- [Repositorio do OpenEMR no GitHub](https://github.com/openemr/openemr)
+- [Wiki do OpenEMR](https://open-emr.org/wiki/index.php/Main_Page)
+- [Forum da Comunidade](https://community.open-emr.org)
+- [Projeto OpenEMR DevOps](https://github.com/openemr/openemr-devops)
