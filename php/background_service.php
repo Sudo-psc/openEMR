@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Manage background operations that should be executed at intervals.
@@ -47,6 +48,476 @@
  */
 
 use OpenEMR\Common\Csrf\CsrfUtils;
+
+require_once 'vendor/autoload.php';
+
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
+use Monolog\Handler\RotatingFileHandler;
+use Monolog\Formatter\LineFormatter;
+
+/**
+ * Background Service Class
+ */
+class BackgroundService
+{
+    private Logger $logger;
+    private array $config;
+    private bool $running = false;
+    private string $pidFile;
+    
+    /**
+     * Constructor
+     */
+    public function __construct(array $config = [])
+    {
+        $this->config = array_merge($this->getDefaultConfig(), $config);
+        $this->pidFile = $this->config['pid_file'];
+        $this->initializeLogger();
+        
+        // Set up signal handlers
+        pcntl_signal(SIGTERM, [$this, 'handleSignal']);
+        pcntl_signal(SIGINT, [$this, 'handleSignal']);
+        pcntl_signal(SIGQUIT, [$this, 'handleSignal']);
+    }
+    
+    /**
+     * Get default configuration
+     */
+    private function getDefaultConfig(): array
+    {
+        return [
+            'log_file' => '/var/log/openemr/background_service.log',
+            'log_level' => Logger::INFO,
+            'pid_file' => '/var/run/openemr_background.pid',
+            'max_execution_time' => 3600, // 1 hour
+            'sleep_interval' => 60, // 1 minute
+            'database' => [
+                'host' => $_ENV['DB_HOST'] ?? 'localhost',
+                'port' => (int)($_ENV['DB_PORT'] ?? 3306),
+                'username' => $_ENV['DB_USER'] ?? 'openemr',
+                'password' => $_ENV['DB_PASS'] ?? '',
+                'database' => $_ENV['DB_NAME'] ?? 'openemr'
+            ]
+        ];
+    }
+    
+    /**
+     * Initialize logger
+     */
+    private function initializeLogger(): void
+    {
+        $this->logger = new Logger('background_service');
+        
+        // Add rotating file handler
+        $fileHandler = new RotatingFileHandler(
+            $this->config['log_file'],
+            0,
+            $this->config['log_level']
+        );
+        
+        // Add console handler for development
+        $consoleHandler = new StreamHandler('php://stdout', Logger::DEBUG);
+        
+        // Set custom formatter
+        $formatter = new LineFormatter(
+            "[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n",
+            'Y-m-d H:i:s'
+        );
+        
+        $fileHandler->setFormatter($formatter);
+        $consoleHandler->setFormatter($formatter);
+        
+        $this->logger->pushHandler($fileHandler);
+        $this->logger->pushHandler($consoleHandler);
+    }
+    
+    /**
+     * Start the background service
+     */
+    public function start(): void
+    {
+        try {
+            $this->checkIfRunning();
+            $this->writePidFile();
+            $this->running = true;
+            
+            $this->logger->info('Background service started', ['pid' => getmypid()]);
+            
+            $startTime = time();
+            $maxExecutionTime = $this->config['max_execution_time'];
+            
+            while ($this->running) {
+                $this->processTasks();
+                
+                // Check if we've exceeded max execution time
+                if (time() - $startTime > $maxExecutionTime) {
+                    $this->logger->info('Max execution time reached, stopping service');
+                    break;
+                }
+                
+                // Process pending signals
+                pcntl_signal_dispatch();
+                
+                // Sleep before next iteration
+                sleep($this->config['sleep_interval']);
+            }
+            
+        } catch (Exception $e) {
+            $this->logger->error('Service error: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        } finally {
+            $this->cleanup();
+        }
+    }
+    
+    /**
+     * Stop the background service
+     */
+    public function stop(): void
+    {
+        $this->running = false;
+        $this->logger->info('Background service stop requested');
+    }
+    
+    /**
+     * Check if service is already running
+     */
+    private function checkIfRunning(): void
+    {
+        if (file_exists($this->pidFile)) {
+            $pid = (int)file_get_contents($this->pidFile);
+            
+            if ($pid > 0 && posix_kill($pid, 0)) {
+                throw new RuntimeException("Service already running with PID: $pid");
+            } else {
+                // Stale PID file
+                unlink($this->pidFile);
+                $this->logger->warning('Removed stale PID file', ['pid' => $pid]);
+            }
+        }
+    }
+    
+    /**
+     * Write PID file
+     */
+    private function writePidFile(): void
+    {
+        $pid = getmypid();
+        
+        if (file_put_contents($this->pidFile, $pid) === false) {
+            throw new RuntimeException("Failed to write PID file: {$this->pidFile}");
+        }
+        
+        $this->logger->debug('PID file written', ['pid' => $pid, 'file' => $this->pidFile]);
+    }
+    
+    /**
+     * Process background tasks
+     */
+    private function processTasks(): void
+    {
+        $this->logger->debug('Processing background tasks');
+        
+        try {
+            // Task 1: Database maintenance
+            $this->performDatabaseMaintenance();
+            
+            // Task 2: Log cleanup
+            $this->performLogCleanup();
+            
+            // Task 3: Cache cleanup
+            $this->performCacheCleanup();
+            
+            // Task 4: Session cleanup
+            $this->performSessionCleanup();
+            
+            // Task 5: Backup validation
+            $this->validateBackups();
+            
+            $this->logger->debug('Background tasks completed successfully');
+            
+        } catch (Exception $e) {
+            $this->logger->error('Error processing tasks: ' . $e->getMessage(), [
+                'exception' => $e
+            ]);
+        }
+    }
+    
+    /**
+     * Perform database maintenance
+     */
+    private function performDatabaseMaintenance(): void
+    {
+        try {
+            $pdo = $this->getDatabaseConnection();
+            
+            // Optimize tables
+            $tables = ['audit_master', 'log', 'api_log', 'sessions'];
+            
+            foreach ($tables as $table) {
+                $stmt = $pdo->prepare("OPTIMIZE TABLE $table");
+                $stmt->execute();
+                $this->logger->debug("Optimized table: $table");
+            }
+            
+            // Clean old audit logs (older than 6 months)
+            $stmt = $pdo->prepare("DELETE FROM audit_master WHERE date < DATE_SUB(NOW(), INTERVAL 6 MONTH)");
+            $deleted = $stmt->execute();
+            $rowCount = $stmt->rowCount();
+            
+            if ($rowCount > 0) {
+                $this->logger->info("Cleaned audit logs", ['deleted_rows' => $rowCount]);
+            }
+            
+        } catch (PDOException $e) {
+            $this->logger->error('Database maintenance error: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+    
+    /**
+     * Perform log cleanup
+     */
+    private function performLogCleanup(): void
+    {
+        $logDirs = [
+            '/var/log/openemr',
+            '/var/log/nginx',
+            '/var/log/apache2'
+        ];
+        
+        foreach ($logDirs as $logDir) {
+            if (!is_dir($logDir)) {
+                continue;
+            }
+            
+            $this->cleanOldLogs($logDir, 30); // Keep logs for 30 days
+        }
+    }
+    
+    /**
+     * Clean old log files
+     */
+    private function cleanOldLogs(string $directory, int $daysToKeep): void
+    {
+        $cutoffTime = time() - ($daysToKeep * 24 * 60 * 60);
+        $deletedFiles = 0;
+        
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($directory),
+            RecursiveIteratorIterator::LEAVES_ONLY
+        );
+        
+        foreach ($iterator as $file) {
+            if ($file->isFile() && $file->getMTime() < $cutoffTime) {
+                if (preg_match('/\.(log|log\.\d+)$/', $file->getFilename())) {
+                    unlink($file->getPathname());
+                    $deletedFiles++;
+                }
+            }
+        }
+        
+        if ($deletedFiles > 0) {
+            $this->logger->info("Cleaned old logs", [
+                'directory' => $directory,
+                'deleted_files' => $deletedFiles,
+                'days_kept' => $daysToKeep
+            ]);
+        }
+    }
+    
+    /**
+     * Perform cache cleanup
+     */
+    private function performCacheCleanup(): void
+    {
+        $cacheDirs = [
+            '/tmp/openemr_cache',
+            '/var/cache/openemr',
+            sys_get_temp_dir() . '/openemr'
+        ];
+        
+        foreach ($cacheDirs as $cacheDir) {
+            if (is_dir($cacheDir)) {
+                $this->cleanCacheDirectory($cacheDir);
+            }
+        }
+    }
+    
+    /**
+     * Clean cache directory
+     */
+    private function cleanCacheDirectory(string $directory): void
+    {
+        $cutoffTime = time() - (24 * 60 * 60); // 1 day
+        $deletedFiles = 0;
+        
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($directory),
+            RecursiveIteratorIterator::LEAVES_ONLY
+        );
+        
+        foreach ($iterator as $file) {
+            if ($file->isFile() && $file->getMTime() < $cutoffTime) {
+                unlink($file->getPathname());
+                $deletedFiles++;
+            }
+        }
+        
+        if ($deletedFiles > 0) {
+            $this->logger->info("Cleaned cache directory", [
+                'directory' => $directory,
+                'deleted_files' => $deletedFiles
+            ]);
+        }
+    }
+    
+    /**
+     * Perform session cleanup
+     */
+    private function performSessionCleanup(): void
+    {
+        try {
+            $pdo = $this->getDatabaseConnection();
+            
+            // Clean expired sessions
+            $stmt = $pdo->prepare("DELETE FROM sessions WHERE last_updated < DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+            $stmt->execute();
+            $rowCount = $stmt->rowCount();
+            
+            if ($rowCount > 0) {
+                $this->logger->info("Cleaned expired sessions", ['deleted_rows' => $rowCount]);
+            }
+            
+        } catch (PDOException $e) {
+            $this->logger->error('Session cleanup error: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Validate backups
+     */
+    private function validateBackups(): void
+    {
+        $backupDir = '/var/backups/openemr';
+        
+        if (!is_dir($backupDir)) {
+            $this->logger->warning('Backup directory not found', ['directory' => $backupDir]);
+            return;
+        }
+        
+        $recentBackups = glob("$backupDir/backup_*.sql");
+        usort($recentBackups, function ($a, $b) {
+            return filemtime($b) - filemtime($a);
+        });
+        
+        if (empty($recentBackups)) {
+            $this->logger->warning('No backup files found', ['directory' => $backupDir]);
+            return;
+        }
+        
+        $latestBackup = $recentBackups[0];
+        $backupAge = time() - filemtime($latestBackup);
+        
+        if ($backupAge > (24 * 60 * 60)) { // Older than 1 day
+            $this->logger->warning('Latest backup is old', [
+                'file' => basename($latestBackup),
+                'age_hours' => round($backupAge / 3600, 2)
+            ]);
+        } else {
+            $this->logger->debug('Backup validation passed', [
+                'latest_backup' => basename($latestBackup),
+                'age_hours' => round($backupAge / 3600, 2)
+            ]);
+        }
+    }
+    
+    /**
+     * Get database connection
+     */
+    private function getDatabaseConnection(): PDO
+    {
+        static $pdo = null;
+        
+        if ($pdo === null) {
+            $config = $this->config['database'];
+            $dsn = "mysql:host={$config['host']};port={$config['port']};dbname={$config['database']};charset=utf8mb4";
+            
+            $options = [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET sql_mode='STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'"
+            ];
+            
+            $pdo = new PDO($dsn, $config['username'], $config['password'], $options);
+        }
+        
+        return $pdo;
+    }
+    
+    /**
+     * Handle system signals
+     */
+    public function handleSignal(int $signal): void
+    {
+        $this->logger->info('Received signal', ['signal' => $signal]);
+        
+        switch ($signal) {
+            case SIGTERM:
+            case SIGINT:
+            case SIGQUIT:
+                $this->stop();
+                break;
+        }
+    }
+    
+    /**
+     * Cleanup resources
+     */
+    private function cleanup(): void
+    {
+        if (file_exists($this->pidFile)) {
+            unlink($this->pidFile);
+        }
+        
+        $this->logger->info('Background service stopped');
+    }
+}
+
+/**
+ * Service runner function
+ */
+function runBackgroundService(array $config = []): void
+{
+    try {
+        $service = new BackgroundService($config);
+        $service->start();
+    } catch (Exception $e) {
+        error_log("Background service error: " . $e->getMessage());
+        exit(1);
+    }
+}
+
+// CLI execution
+if (php_sapi_name() === 'cli') {
+    $config = [];
+    
+    // Parse command line arguments
+    $options = getopt('c:', ['config:']);
+    if (isset($options['c']) || isset($options['config'])) {
+        $configFile = $options['c'] ?? $options['config'];
+        if (file_exists($configFile)) {
+            $config = include $configFile;
+        }
+    }
+    
+    runBackgroundService($config);
+}
 
 //ajax param should be set by calling ajax scripts
 $isAjaxCall = isset($_POST['ajax']);

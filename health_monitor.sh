@@ -1,372 +1,479 @@
 #!/bin/bash
 
-# Health Monitor Script
+# Health Monitor for OpenEMR
+# Monitors various health metrics and alerts when thresholds are exceeded
 
-# --- Configuration ---
-# All configuration variables can be overridden by setting them as environment variables.
+set -euo pipefail
 
-OPENEMR_URL="${OPENEMR_URL:-https://emr.saraivavision.com.br}" # Target URL for the OpenEMR application check. Default: https://emr.saraivavision.com.br
-MYSQL_CONTAINER_NAME="${MYSQL_CONTAINER_NAME:-mysql}" # Name of the MySQL Docker container. Default: mysql
-DB_USER="${DB_USER:-${MYSQL_USER:-openemr}}" # MySQL user for database check. Defaults to MYSQL_USER env var if set, otherwise 'openemr'.
-DB_PASS="${DB_PASS:-${MYSQL_PASS}}" # MySQL password for DB_USER. MUST BE SET via environment variable (e.g., export DB_PASS="your_password"). Typically same as MYSQL_PASS for OpenEMR.
-# Note: For mysqladmin ping, user/pass might not be strictly needed if run as root equivalent inside container,
-# but it's good practice if we switch to a query later or if ping requires it.
-# If using root, it would be:
-# DB_USER_ROOT="${DB_USER_ROOT:-${MYSQL_ROOT_USER:-root}}" # MySQL root user, often 'root'.
-# DB_PASS_ROOT="${DB_PASS_ROOT:-${MYSQL_ROOT_PASSWORD}}" # MySQL root password. MUST BE SET if root fallback is intended. (e.g., MYSQL_ROOT_PASSWORD)
+# Configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+readonly CONFIG_FILE="${SCRIPT_DIR}/config/health_monitor.conf"
+readonly LOG_FILE="${SCRIPT_DIR}/logs/health_monitor.log"
+readonly PID_FILE="${SCRIPT_DIR}/health_monitor.pid"
 
-NGINX_CONTAINER_NAME="${NGINX_CONTAINER_NAME:-nginx}" # Name of the Nginx Docker container. Default: nginx
-NGINX_HEALTH_URL_INTERNAL="${NGINX_HEALTH_URL_INTERNAL:-http://localhost/health.html}" # URL for Nginx health endpoint. Assumes Nginx port 80 is mapped to host. Default: http://localhost/health.html
-SSL_DOMAIN_TO_CHECK="${SSL_DOMAIN_TO_CHECK:-emr.saraivavision.com.br}" # Domain for SSL certificate expiry check. Default: emr.saraivavision.com.br
-# Prerequisite for SSL check: 'openssl' command-line tool must be installed.
-SSL_CERT_WARN_DAYS="${SSL_CERT_WARN_DAYS:-30}" # Days before SSL certificate expiry to issue a warning. Default: 30
-CERTBOT_CONTAINER_NAME="${CERTBOT_CONTAINER_NAME:-certbot}" # Name of the Certbot Docker container. Default: certbot
-CERTBOT_LOG_LINES_TO_CHECK="${CERTBOT_LOG_LINES_TO_CHECK:-50}" # Number of recent Certbot log lines to inspect. Default: 50
+# Default thresholds
+CPU_THRESHOLD=80
+MEMORY_THRESHOLD=80
+DISK_THRESHOLD=85
+LOAD_THRESHOLD=2.0
+CHECK_INTERVAL=300
 
-# Path to openemr-cmd if installed
-OPENEMR_CMD_PATH=$(command -v openemr-cmd || true)
+# Colors for output
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly NC='\033[0m' # No Color
 
-ALERT_EMAIL_RECIPIENT="${ALERT_EMAIL_RECIPIENT:-}" # Email address for sending alerts. MUST BE SET for email notifications to work.
-ALERT_EMAIL_SUBJECT_PREFIX="${ALERT_EMAIL_SUBJECT_PREFIX:-[HealthMonitor Alert]}" # Subject prefix for alert emails. Default: [HealthMonitor Alert]
-# Prerequisite for email alerts: 'mail' command (from mailutils or similar package) must be installed and configured on the system running this script.
+# Load configuration if exists
+if [[ -f "$CONFIG_FILE" ]]; then
+    # shellcheck source=/dev/null
+    source "$CONFIG_FILE"
+fi
 
-FAILED_CHECKS=() # Array to store messages for failed checks. Used for accumulating failures for the alert email.
-# TODO: Add configurable variables (URLs, email, etc.) here
-
-# --- Helper Functions ---
-# General prerequisite: The user running this script needs permissions to execute 'docker' commands (e.g., part of the 'docker' group or sudo access).
-# General prerequisite: 'curl' command-line tool must be installed.
+# Logging function
 log_message() {
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] - $1"
+    local level="$1"
+    local message="$2"
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "[$timestamp] [$level] $message" | tee -a "$LOG_FILE"
 }
 
-record_failure() {
+# Error handling
+error_exit() {
     local message="$1"
-    log_message "FAILURE DETECTED: $message" # Log it using existing log_message
-    FAILED_CHECKS+=("$message")
+    log_message "ERROR" "$message"
+    exit 1
 }
-# TODO: Add helper functions (e.g., for logging, sending alerts) here
 
-# --- Service Checks ---
+# Cleanup function
+cleanup() {
+    if [[ -f "$PID_FILE" ]]; then
+        rm -f "$PID_FILE"
+    fi
+    log_message "INFO" "Health monitor stopped"
+}
 
-# 1. OpenEMR Application Check
-# Checks if the OpenEMR application is accessible and returns a 200 HTTP status code.
-check_openemr() {
-    log_message "Checking OpenEMR application at ${OPENEMR_URL}..."
-    HTTP_STATUS=$(curl --silent --output /dev/null --write-out "%{http_code}" -L "${OPENEMR_URL}") # -L follows redirects
+# Set trap for cleanup
+trap cleanup EXIT INT TERM
 
-    if [ "$HTTP_STATUS" -eq 200 ]; then
-        log_message "OpenEMR application is UP. Status: ${HTTP_STATUS}"
-        return 0 # Success
-    else
-        record_failure "OpenEMR application is DOWN or returned status ${HTTP_STATUS}."
-        return 1 # Failure
+# Check if running as daemon
+check_daemon() {
+    if [[ -f "$PID_FILE" ]]; then
+        local pid
+        pid=$(cat "$PID_FILE")
+        if kill -0 "$pid" 2>/dev/null; then
+            error_exit "Health monitor is already running with PID $pid"
+        else
+            rm -f "$PID_FILE"
+        fi
     fi
 }
 
-# 2. MySQL Database Check
-# Checks if the MySQL database server is running and accessible by attempting to ping it using 'mysqladmin ping'.
-# Requires DB_PASS to be set. Can also try a fallback to root user if configured and initial ping fails.
-check_mysql() {
-    log_message "Checking MySQL database connection on container '${MYSQL_CONTAINER_NAME}'..."
+# Write PID file
+write_pid() {
+    echo $$ > "$PID_FILE"
+}
 
-    # Check if DB_PASS is set, otherwise we can't proceed
-    if [ -z "${DB_PASS}" ]; then
-        record_failure "MySQL check skipped: DB_PASS environment variable is not set."
-        return 1 # Failure, as we can't perform the check
-    fi
-
-    # Attempt to ping the MySQL server
-    # The --silent flag for mysqladmin ping suppresses output on success.
-    # We check the exit code.
-    if docker exec "${MYSQL_CONTAINER_NAME}" mysqladmin ping -u"${DB_USER}" -p"${DB_PASS}" --silent; then
-        log_message "MySQL database is UP. Connection successful."
-        return 0 # Success
+# CPU usage check
+check_cpu_usage() {
+    local cpu_usage
+    cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)
+    
+    if (( $(echo "$cpu_usage > $CPU_THRESHOLD" | bc -l) )); then
+        log_message "WARNING" "High CPU usage: ${cpu_usage}% (threshold: ${CPU_THRESHOLD}%)"
+        send_alert "High CPU Usage" "CPU usage is at ${cpu_usage}% which exceeds threshold of ${CPU_THRESHOLD}%"
+        return 1
     else
-        # Try with root user as a fallback, as ping might be restricted for the application user
-        # This assumes MYSQL_ROOT_PASSWORD is set in the environment.
-        # If DB_USER is already root, this won't make a difference.
-        if [ "${DB_USER}" != "root" ] && [ -n "${MYSQL_ROOT_PASSWORD}" ]; then
-            log_message "MySQL ping with ${DB_USER} failed. Trying with root..."
-            if docker exec "${MYSQL_CONTAINER_NAME}" mysqladmin ping -uroot -p"${MYSQL_ROOT_PASSWORD}" --silent; then
-                log_message "MySQL database is UP (connected as root). Connection successful."
-                return 0 # Success
+        log_message "INFO" "CPU usage: ${cpu_usage}% (OK)"
+        return 0
+    fi
+}
+
+# Memory usage check
+check_memory_usage() {
+    local memory_info
+    local total_mem
+    local used_mem
+    local memory_percent
+    
+    memory_info=$(free | grep Mem)
+    total_mem=$(echo "$memory_info" | awk '{print $2}')
+    used_mem=$(echo "$memory_info" | awk '{print $3}')
+    memory_percent=$(echo "scale=2; $used_mem * 100 / $total_mem" | bc)
+    
+    if (( $(echo "$memory_percent > $MEMORY_THRESHOLD" | bc -l) )); then
+        log_message "WARNING" "High memory usage: ${memory_percent}% (threshold: ${MEMORY_THRESHOLD}%)"
+        send_alert "High Memory Usage" "Memory usage is at ${memory_percent}% which exceeds threshold of ${MEMORY_THRESHOLD}%"
+        return 1
+    else
+        log_message "INFO" "Memory usage: ${memory_percent}% (OK)"
+        return 0
+    fi
+}
+
+# Disk usage check
+check_disk_usage() {
+    local mount_point
+    local usage_percent
+    local status=0
+    
+    while IFS= read -r line; do
+        mount_point=$(echo "$line" | awk '{print $6}')
+        usage_percent=$(echo "$line" | awk '{print $5}' | cut -d'%' -f1)
+        
+        if [[ "$usage_percent" =~ ^[0-9]+$ ]] && (( usage_percent > DISK_THRESHOLD )); then
+            log_message "WARNING" "High disk usage on $mount_point: ${usage_percent}% (threshold: ${DISK_THRESHOLD}%)"
+            send_alert "High Disk Usage" "Disk usage on $mount_point is at ${usage_percent}% which exceeds threshold of ${DISK_THRESHOLD}%"
+            status=1
+        else
+            log_message "INFO" "Disk usage on $mount_point: ${usage_percent}% (OK)"
+        fi
+    done < <(df -h | grep -E '^/dev/')
+    
+    return $status
+}
+
+# Load average check
+check_load_average() {
+    local load_avg
+    local load_1min
+    
+    load_avg=$(uptime | awk -F'load average:' '{print $2}' | awk '{print $1}' | cut -d',' -f1)
+    load_1min=$(echo "$load_avg" | xargs)
+    
+    if (( $(echo "$load_1min > $LOAD_THRESHOLD" | bc -l) )); then
+        log_message "WARNING" "High load average: $load_1min (threshold: $LOAD_THRESHOLD)"
+        send_alert "High Load Average" "Load average is at $load_1min which exceeds threshold of $LOAD_THRESHOLD"
+        return 1
+    else
+        log_message "INFO" "Load average: $load_1min (OK)"
+        return 0
+    fi
+}
+
+# Docker container health check
+check_docker_containers() {
+    local failed_containers=()
+    
+    if ! command -v docker &> /dev/null; then
+        log_message "WARNING" "Docker not found, skipping container health check"
+        return 0
+    fi
+    
+    while IFS= read -r container; do
+        local container_name
+        local health_status
+        
+        container_name=$(echo "$container" | awk '{print $1}')
+        health_status=$(echo "$container" | awk '{print $2}')
+        
+        if [[ "$health_status" != "healthy" ]] && [[ "$health_status" != "Up" ]]; then
+            failed_containers+=("$container_name")
+            log_message "ERROR" "Container $container_name is unhealthy: $health_status"
+        else
+            log_message "INFO" "Container $container_name: $health_status (OK)"
+        fi
+    done < <(docker ps --format "table {{.Names}}\t{{.Status}}" | tail -n +2)
+    
+    if [[ ${#failed_containers[@]} -gt 0 ]]; then
+        send_alert "Docker Container Issues" "The following containers are unhealthy: ${failed_containers[*]}"
+        return 1
+    fi
+    
+    return 0
+}
+
+# Database connectivity check
+check_database_connection() {
+    local db_host="${DB_HOST:-localhost}"
+    local db_port="${DB_PORT:-3306}"
+    local db_user="${DB_USER:-root}"
+    local db_pass="${DB_PASS:-}"
+    local db_name="${DB_NAME:-openemr}"
+    
+    if command -v mysql &> /dev/null; then
+        if mysql -h "$db_host" -P "$db_port" -u "$db_user" -p"$db_pass" -e "USE $db_name; SELECT 1;" &> /dev/null; then
+            log_message "INFO" "Database connection: OK"
+            return 0
+        else
+            log_message "ERROR" "Database connection failed"
+            send_alert "Database Connection Failed" "Cannot connect to database $db_name on $db_host:$db_port"
+            return 1
+        fi
+    else
+        log_message "WARNING" "MySQL client not found, skipping database check"
+        return 0
+    fi
+}
+
+# Web service health check
+check_web_service() {
+    local web_url="${WEB_URL:-http://localhost}"
+    local expected_status="${EXPECTED_STATUS:-200}"
+    local actual_status
+    
+    if command -v curl &> /dev/null; then
+        actual_status=$(curl -s -o /dev/null -w "%{http_code}" "$web_url" || echo "000")
+        
+        if [[ "$actual_status" == "$expected_status" ]]; then
+            log_message "INFO" "Web service health: OK (HTTP $actual_status)"
+            return 0
+        else
+            log_message "ERROR" "Web service health check failed: HTTP $actual_status (expected $expected_status)"
+            send_alert "Web Service Down" "Web service at $web_url returned HTTP $actual_status instead of expected $expected_status"
+            return 1
+        fi
+    else
+        log_message "WARNING" "curl not found, skipping web service check"
+        return 0
+    fi
+}
+
+# SSL certificate expiry check
+check_ssl_certificate() {
+    local domain="${SSL_DOMAIN:-localhost}"
+    local warning_days="${SSL_WARNING_DAYS:-30}"
+    local cert_expiry
+    local days_until_expiry
+    
+    if command -v openssl &> /dev/null; then
+        cert_expiry=$(echo | openssl s_client -servername "$domain" -connect "$domain:443" 2>/dev/null | openssl x509 -noout -dates | grep notAfter | cut -d= -f2)
+        
+        if [[ -n "$cert_expiry" ]]; then
+            local expiry_epoch
+            local current_epoch
+            
+            expiry_epoch=$(date -d "$cert_expiry" +%s)
+            current_epoch=$(date +%s)
+            days_until_expiry=$(( (expiry_epoch - current_epoch) / 86400 ))
+            
+            if (( days_until_expiry <= warning_days )); then
+                log_message "WARNING" "SSL certificate for $domain expires in $days_until_expiry days"
+                send_alert "SSL Certificate Expiring" "SSL certificate for $domain expires in $days_until_expiry days"
+                return 1
             else
-                        record_failure "MySQL database is DOWN or connection failed (even as root). User: ${DB_USER}. Exit code: $?"
-                return 1 # Failure
+                log_message "INFO" "SSL certificate for $domain: OK ($days_until_expiry days remaining)"
+                return 0
             fi
         else
-                    record_failure "MySQL database is DOWN or connection failed for user ${DB_USER}. Exit code: $?"
-            return 1 # Failure
+            log_message "ERROR" "Could not retrieve SSL certificate information for $domain"
+            return 1
         fi
-    fi
-}
-
-# 3. Nginx Reverse Proxy Checks
-
-# 3a. Nginx Process Check
-# Checks if the Nginx process is running inside its designated Docker container.
-check_nginx_process() {
-    log_message "Checking Nginx process on container '${NGINX_CONTAINER_NAME}'..."
-    if docker exec "${NGINX_CONTAINER_NAME}" pgrep nginx > /dev/null; then
-        log_message "Nginx process is RUNNING."
-        return 0 # Success
     else
-        record_failure "Nginx process is NOT RUNNING on container ${NGINX_CONTAINER_NAME}."
-        return 1 # Failure
+        log_message "WARNING" "openssl not found, skipping SSL certificate check"
+        return 0
     fi
 }
 
-# 3b. Nginx Health Endpoint Check
-# Checks a specific health endpoint on Nginx (e.g., /health.html) for a 200 status and "OK" content.
-# Assumes Nginx is serving this endpoint, typically mapped from the host.
-check_nginx_health_endpoint() {
-    log_message "Checking Nginx health endpoint at '${NGINX_HEALTH_URL_INTERNAL}'..."
-    # This assumes the script is run from the host and Nginx port 80 is mapped to host's port 80.
-    # The server block for 'localhost' in Nginx should respond.
-    HTTP_STATUS=$(curl --silent --output /dev/null --write-out "%{http_code}" -L "${NGINX_HEALTH_URL_INTERNAL}")
+# Send alert function
+send_alert() {
+    local subject="$1"
+    local message="$2"
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    # TODO: Implement email alerting
+    log_message "ALERT" "$subject: $message"
+    
+    # TODO: Implement Slack/Discord webhook notifications
+    # TODO: Implement SMS alerting via Twilio
+    # TODO: Implement PagerDuty integration
+    
+    # For now, just log the alert
+    echo "ALERT [$timestamp]: $subject - $message" >> "${SCRIPT_DIR}/logs/alerts.log"
+}
 
-    if [ "$HTTP_STATUS" -eq 200 ]; then
-        # Optionally, check content:
-        CONTENT=$(curl --silent -L "${NGINX_HEALTH_URL_INTERNAL}")
-        if echo "${CONTENT}" | grep -q "OK"; then
-            log_message "Nginx health endpoint is UP and content is valid. Status: ${HTTP_STATUS}"
-            return 0 # Success
+# Generate health report
+generate_report() {
+    local report_file
+    local timestamp
+    report_file="${SCRIPT_DIR}/reports/health_report_$(date +%Y%m%d_%H%M%S).html"
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    mkdir -p "$(dirname "$report_file")"
+    
+    cat > "$report_file" << EOF
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OpenEMR Health Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background-color: #f0f0f0; padding: 10px; border-radius: 5px; }
+        .ok { color: green; }
+        .warning { color: orange; }
+        .error { color: red; }
+        .metric { margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>OpenEMR Health Report</h1>
+        <p>Generated: $timestamp</p>
+    </div>
+    
+    <div class="metric">
+        <h3>System Metrics</h3>
+        <p>CPU Usage: $(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)%</p>
+        <p>Memory Usage: $(free | grep Mem | awk '{printf "%.2f", $3*100/$2}')%</p>
+        <p>Load Average: $(uptime | awk -F'load average:' '{print $2}' | awk '{print $1}' | cut -d',' -f1 | xargs)</p>
+    </div>
+    
+    <div class="metric">
+        <h3>Service Status</h3>
+        <p>Database: $(check_database_connection &>/dev/null && echo "OK" || echo "ERROR")</p>
+        <p>Web Service: $(check_web_service &>/dev/null && echo "OK" || echo "ERROR")</p>
+    </div>
+</body>
+</html>
+EOF
+    
+    log_message "INFO" "Health report generated: $report_file"
+}
+
+# Main monitoring loop
+run_monitoring() {
+    log_message "INFO" "Starting health monitoring (PID: $$)"
+    write_pid
+    
+    while true; do
+        local overall_status=0
+        
+        log_message "INFO" "Running health checks..."
+        
+        # Run all health checks
+        check_cpu_usage || overall_status=1
+        check_memory_usage || overall_status=1
+        check_disk_usage || overall_status=1
+        check_load_average || overall_status=1
+        check_docker_containers || overall_status=1
+        check_database_connection || overall_status=1
+        check_web_service || overall_status=1
+        check_ssl_certificate || overall_status=1
+        
+        if [[ $overall_status -eq 0 ]]; then
+            log_message "INFO" "All health checks passed"
         else
-                    record_failure "Nginx health endpoint at ${NGINX_HEALTH_URL_INTERNAL} is UP (Status: ${HTTP_STATUS}) but content 'OK' not found."
-            return 1 # Failure due to content mismatch
+            log_message "WARNING" "Some health checks failed"
         fi
-    else
-                record_failure "Nginx health endpoint at ${NGINX_HEALTH_URL_INTERNAL} is DOWN or returned status ${HTTP_STATUS}."
-        return 1 # Failure
-    fi
-}
-
-# 3c. Nginx SSL Certificate Check
-# Checks the SSL certificate for the specified domain (SSL_DOMAIN_TO_CHECK).
-# Verifies if the certificate is not expired and warns if it's expiring soon (SSL_CERT_WARN_DAYS).
-# Prerequisite: 'openssl' command-line tool must be installed on the system running this script (already noted in config section).
-check_nginx_ssl_cert() {
-    log_message "Checking SSL certificate for '${SSL_DOMAIN_TO_CHECK}'..."
-    if ! command -v openssl &> /dev/null; then
-        record_failure "SSL check skipped for ${SSL_DOMAIN_TO_CHECK}: openssl command not found."
-        return 1 # Failure, as check cannot be performed
-    fi
-
-    # Get expiry date using openssl
-    # The s_client command might hang if the remote server doesn't respond quickly or if there's a network issue.
-    # Adding a timeout to openssl s_client. -connect_timeout is not standard for s_client.
-    # We can use the 'timeout' command if available to wrap openssl s_client.
-    TIMEOUT_CMD=""
-    if command -v timeout &> /dev/null; then
-        TIMEOUT_CMD="timeout 10s" # 10 second timeout
-    fi
-
-    EXPIRY_DATE_STR=$($TIMEOUT_CMD openssl s_client -servername "${SSL_DOMAIN_TO_CHECK}" \
-                -connect "${SSL_DOMAIN_TO_CHECK}:443" 2>/dev/null \
-                | openssl x509 -noout -dates 2>/dev/null \
-                | grep 'notAfter=' \
-                | cut -d= -f2)
-
-    if [ -z "${EXPIRY_DATE_STR}" ]; then
-        record_failure "Could not retrieve SSL certificate expiry date for '${SSL_DOMAIN_TO_CHECK}'."
-        return 1 # Failure
-    fi
-
-    # Convert expiry date to seconds since epoch
-    EXPIRY_DATE_SECS=""
-    # Try GNU date first
-    if type date | grep -q 'GNU coreutils'; then
-         EXPIRY_DATE_SECS=$(date --date="${EXPIRY_DATE_STR}" +%s 2>/dev/null)
-    fi
-
-    # If GNU date failed or not available, try BSD date (common on macOS)
-    if [ -z "${EXPIRY_DATE_SECS}" ]; then
-        # OpenSSL date format is like "Sep  7 12:48:52 2024 GMT"
-        # BSD date -j -f <format> <date_string> +<output_format>
-        # The format string needs to match the input "MMM DD HH:MM:SS YYYY GMT"
-        # For example: date -j -f "%b %d %T %Y %Z" "Sep 07 12:48:52 2024 GMT" "+%s"
-        EXPIRY_DATE_SECS=$(date -j -f "%b %d %H:%M:%S %Y %Z" "${EXPIRY_DATE_STR}" "+%s" 2>/dev/null)
-    fi
-
-    if [ -z "${EXPIRY_DATE_SECS}" ]; then
-        record_failure "Could not parse SSL certificate expiry date for '${SSL_DOMAIN_TO_CHECK}': '${EXPIRY_DATE_STR}'."
-        return 1 # Failure, as date parsing is critical for this check
-    fi
-
-    CURRENT_DATE_SECS=$(date +%s)
-    WARN_SECONDS=$((SSL_CERT_WARN_DAYS * 24 * 60 * 60))
-
-    if [ "${EXPIRY_DATE_SECS}" -lt "${CURRENT_DATE_SECS}" ]; then
-        record_failure "SSL certificate for '${SSL_DOMAIN_TO_CHECK}' has EXPIRED on ${EXPIRY_DATE_STR}."
-        return 1 # Failure
-    elif [ "$((EXPIRY_DATE_SECS - CURRENT_DATE_SECS))" -lt "${WARN_SECONDS}" ]; then
-        log_message "SSL certificate for '${SSL_DOMAIN_TO_CHECK}' is expiring soon: ${EXPIRY_DATE_STR}. Days left: $(((EXPIRY_DATE_SECS - CURRENT_DATE_SECS) / (24*60*60)))"
-        # This is a warning, but the service is still "up" from an SSL validity perspective for now.
-        # The main alerting logic can decide if this triggers a different level of alert.
-        # For the function's return status, 0 means "SSL is currently valid".
-        return 0 # Success (cert is valid, though warning logged)
-    else
-        log_message "SSL certificate for '${SSL_DOMAIN_TO_CHECK}' is valid. Expires: ${EXPIRY_DATE_STR}. Days left: $(((EXPIRY_DATE_SECS - CURRENT_DATE_SECS) / (24*60*60)))"
-        return 0 # Success
-    fi
-}
-
-# 4. Certbot Service Check
-# Checks the logs of the Certbot container for recent successful renewals or errors.
-# This is an operational check for Certbot's activity, complementing the direct SSL certificate check.
-check_certbot_logs() {
-    log_message "Checking Certbot logs on container '${CERTBOT_CONTAINER_NAME}' for recent activity..."
-
-    if ! docker ps -q --filter "name=^/${CERTBOT_CONTAINER_NAME}$" | grep -q .; then
-        record_failure "Certbot container '${CERTBOT_CONTAINER_NAME}' is not running."
-        return 1 # Failure
-    fi
-
-    # Get recent logs
-    RECENT_LOGS=$(docker logs --tail "${CERTBOT_LOG_LINES_TO_CHECK}" "${CERTBOT_CONTAINER_NAME}" 2>&1)
-
-    if [ -z "${RECENT_LOGS}" ]; then
-        log_message "No recent logs found for Certbot container '${CERTBOT_CONTAINER_NAME}'."
-        # This might not be an error if the container just started and hasn't logged much,
-        # but could indicate an issue if it's been running a while.
-        # For now, consider it a warning/neutral, but the Nginx SSL check is more definitive for cert status.
-        return 0 # Neutral, rely on SSL cert check for actual cert issues
-    fi
-
-    # Check for errors or specific success messages
-    # Certbot's verbosity can vary. "success", "renewed", "Congratulations" are good signs.
-    # "error", "fail", "unable" are bad signs.
-    # The entrypoint script for certbot runs `certbot renew`.
-    # Successful renewal often includes lines like "Certificates renewed successfully" or "Congratulations!"
-    # Failures might include "Attempting to renew cert...An unexpected error occurred." or "Failed to renew certificate".
-
-    # Look for positive indicators of recent renewal activity
-    if echo "${RECENT_LOGS}" | grep -E -i "success|renewed|Congratulations! Certificate and key success"; then
-        log_message "Certbot logs show recent successful activity."
-        # Check for negative indicators within the same recent logs, as a renewal attempt might log both progress and then an error.
-        if echo "${RECENT_LOGS}" | grep -E -i "error|fail|unable to renew|Traceback"; then
-            log_message "WARNING: Certbot logs show recent success but ALSO potential errors/failures. Manual review of Certbot logs recommended."
-            # This is a nuanced state. For now, let's say it's a warning (return 0 but log indicates issue).
-            # The SSL cert check itself is the ultimate arbiter of whether the cert is valid.
-            return 0 # Still, the primary function of checking cert validity is done by SSL check.
-        else
-            return 0 # Success
+        
+        # Generate report every hour (12 cycles of 5 minutes)
+        local cycle_count
+        cycle_count=$((${cycle_count:-0} + 1))
+        if (( cycle_count >= 12 )); then
+            generate_report
+            cycle_count=0
         fi
-    elif echo "${RECENT_LOGS}" | grep -E -i "No renewals were due|no action taken"; then
-        log_message "Certbot logs indicate no renewals were due. This is normal."
-        return 0 # Success (normal state if no certs are near expiry)
-    elif echo "${RECENT_LOGS}" | grep -E -i "error|fail|Traceback|problem|could not"; then
-        log_message "Certbot logs show potential errors or failures. Review Certbot logs for details."
-        # Example: Search for "The following certificates are not due for renewal yet" to ensure it's not just that.
-        if echo "${RECENT_LOGS}" | grep -q "The following certificates are not due for renewal yet"; then
-            log_message "Certbot logs indicate certs are not due for renewal (found 'not due for renewal yet'). This is likely normal."
-            return 0 # Success
-        else
-            # log_message "ERROR: Certbot logs suggest a problem. Full log excerpt for review:"
-            record_failure "Certbot logs for '${CERTBOT_CONTAINER_NAME}' suggest a problem. Review logs."
-            echo "${RECENT_LOGS}" # Print the logs for easier debugging from monitor output
-            return 1 # Failure
-        fi
-    else
-        log_message "Certbot logs do not show clear success or failure regarding recent renewals. Manual check might be needed if SSL issues arise. Last log lines:"
-        echo "${RECENT_LOGS}"
-        # This is an ambiguous state. The SSL check is the primary indicator.
-        return 0 # Neutral/Warning
-    fi
-}
-
-# --- Reporting/Alerting ---
-send_alert_email() {
-    if [ ${#FAILED_CHECKS[@]} -eq 0 ]; then
-        log_message "All checks passed. No alert necessary."
-        return
-    fi
-
-    if [ -z "${ALERT_EMAIL_RECIPIENT}" ]; then
-        log_message "Alerts detected but ALERT_EMAIL_RECIPIENT is not set. Cannot send email."
-        log_message "Failed checks summary:"
-        for failure in "${FAILED_CHECKS[@]}"; do
-            log_message "  - $failure"
-        done
-        return
-    fi
-
-    if ! command -v mail &> /dev/null; then
-        log_message "Alerts detected but 'mail' command not found. Cannot send email."
-        log_message "Failed checks summary:"
-        for failure in "${FAILED_CHECKS[@]}"; do
-            log_message "  - $failure"
-        done
-        return
-    fi
-
-    local subject="${ALERT_EMAIL_SUBJECT_PREFIX} - System Alert - $(hostname)"
-    local body="The following health checks failed on $(hostname) at $(date):
-
-"
-    for failure in "${FAILED_CHECKS[@]}"; do
-        body+=" - ${failure}
-"
+        
+        log_message "INFO" "Sleeping for $CHECK_INTERVAL seconds..."
+        sleep "$CHECK_INTERVAL"
     done
-    body+="
-
-Please investigate.
-"
-
-    log_message "Sending alert email to ${ALERT_EMAIL_RECIPIENT}..."
-    echo -e "${body}" | mail -s "${subject}" "${ALERT_EMAIL_RECIPIENT}"
-
-    if [ $? -eq 0 ]; then
-        log_message "Alert email sent successfully."
-    else
-        log_message "Failed to send alert email. Exit code: $?"
-    fi
 }
 
-# If openemr-cmd is available, log current container status via the utility
-log_docker_status_with_openemr_cmd() {
-    if [ -n "$OPENEMR_CMD_PATH" ]; then
-        log_message "Listing container status via openemr-cmd..."
-        openemr-cmd docker-names || true
-    fi
+# Show help
+show_help() {
+    cat << EOF
+OpenEMR Health Monitor
+
+Usage: $0 [OPTION]
+
+Options:
+    start       Start the health monitor daemon
+    stop        Stop the health monitor daemon
+    status      Show daemon status
+    check       Run health checks once
+    report      Generate health report
+    help        Show this help message
+
+Configuration:
+    Edit $CONFIG_FILE to customize thresholds and settings.
+
+Logs:
+    Monitor logs: $LOG_FILE
+    Alert logs: ${SCRIPT_DIR}/logs/alerts.log
+
+EOF
 }
 
-check_openemr
-OPENEMR_STATUS=$?
-# TODO: Use OPENEMR_STATUS for alerting
+# Main function
+main() {
+    local action="${1:-help}"
+    
+    # Create necessary directories
+    mkdir -p "$(dirname "$LOG_FILE")" "${SCRIPT_DIR}/reports" "${SCRIPT_DIR}/config"
+    
+    case "$action" in
+        start)
+            check_daemon
+            run_monitoring
+            ;;
+        stop)
+            if [[ -f "$PID_FILE" ]]; then
+                local pid
+                pid=$(cat "$PID_FILE")
+                if kill "$pid" 2>/dev/null; then
+                    log_message "INFO" "Health monitor stopped (PID: $pid)"
+                    rm -f "$PID_FILE"
+                else
+                    error_exit "Failed to stop health monitor (PID: $pid)"
+                fi
+            else
+                echo "Health monitor is not running"
+                exit 1
+            fi
+            ;;
+        status)
+            if [[ -f "$PID_FILE" ]]; then
+                local pid
+                pid=$(cat "$PID_FILE")
+                if kill -0 "$pid" 2>/dev/null; then
+                    echo "Health monitor is running (PID: $pid)"
+                    exit 0
+                else
+                    echo "Health monitor is not running (stale PID file)"
+                    rm -f "$PID_FILE"
+                    exit 1
+                fi
+            else
+                echo "Health monitor is not running"
+                exit 1
+            fi
+            ;;
+        check)
+            log_message "INFO" "Running one-time health check"
+            local overall_status=0
+            
+            check_cpu_usage || overall_status=1
+            check_memory_usage || overall_status=1
+            check_disk_usage || overall_status=1
+            check_load_average || overall_status=1
+            check_docker_containers || overall_status=1
+            check_database_connection || overall_status=1
+            check_web_service || overall_status=1
+            check_ssl_certificate || overall_status=1
+            
+            if [[ $overall_status -eq 0 ]]; then
+                echo -e "${GREEN}All health checks passed${NC}"
+                exit 0
+            else
+                echo -e "${RED}Some health checks failed${NC}"
+                exit 1
+            fi
+            ;;
+        report)
+            generate_report
+            ;;
+        help|--help|-h)
+            show_help
+            ;;
+        *)
+            echo "Unknown action: $action"
+            show_help
+            exit 1
+            ;;
+    esac
+}
 
-check_mysql
-MYSQL_STATUS=$?
-# TODO: Use MYSQL_STATUS for alerting
-
-check_nginx_process
-NGINX_PROCESS_STATUS=$?
-# TODO: Use NGINX_PROCESS_STATUS for alerting
-
-check_nginx_health_endpoint
-NGINX_HEALTH_STATUS=$?
-# TODO: Use NGINX_HEALTH_STATUS for alerting
-
-check_nginx_ssl_cert
-NGINX_SSL_STATUS=$?
-# TODO: Use NGINX_SSL_STATUS for alerting
-
-check_certbot_logs
-CERTBOT_STATUS=$?
-# TODO: Use CERTBOT_STATUS for alerting
-
-# Optional: log container status using openemr-cmd if available
-log_docker_status_with_openemr_cmd
-
-# --- Finalize and Report ---
-send_alert_email
-
-log_message "Health monitoring script execution finished."
-
-# Exit with 0 if all checks passed, 1 if any check failed (for cron or other schedulers)
-if [ ${#FAILED_CHECKS[@]} -eq 0 ]; then
-    exit 0
-else
-    exit 1
-fi
+# Execute main function with all arguments
+main "$@"

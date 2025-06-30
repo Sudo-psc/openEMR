@@ -23,7 +23,10 @@ grep -q "server_name exemplo.com teste.com localhost;" "$TMP/nginx.conf"
 
 # Remove first domain
 ./sni-manage.sh remover exemplo.com >"$TMP/out"
-! grep -q "exemplo.com" "$TMP/domains"
+if grep -q "exemplo.com" "$TMP/domains"; then
+    echo "Error: exemplo.com should have been removed from domains file"
+    exit 1
+fi
 grep -q "server_name teste.com localhost;" "$TMP/nginx.conf"
 
 echo "sni-manage.sh tests passed"
