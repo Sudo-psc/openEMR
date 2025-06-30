@@ -1,10 +1,26 @@
 # OpenEMR Docker Setup
+
+[![CI](https://github.com/openEMR/docker-setup/actions/workflows/main.yml/badge.svg)](https://github.com/openEMR/docker-setup/actions/workflows/main.yml) [![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)](#) [![Version](https://img.shields.io/badge/version-1.0.0-blue)](#)
 [Leia esta documentação em Português](README-pt_BR.md)
 
 
 This repository provides a simple Docker Compose configuration for [OpenEMR](https://www.open-emr.org/). Nginx acts as a reverse proxy with Let's Encrypt support.
 
 The installation scripts automatically download and install ophthalmology templates, including the **Eye Exam** form.
+![OpenEMR Screenshot](docs/images/screenshot.png)
+### System Requirements
+- Docker
+- docker-compose
+- 2GB RAM
+- 2 CPUs
+### Quick Start
+```bash
+docker-compose up -d
+```
+### Example
+```bash
+openemr-cmd exec bash -c "echo hello"
+```
 
 ## Getting Started
 
