@@ -149,7 +149,7 @@ Rode a suíte de testes em shell para validar os scripts auxiliares:
 
 ## CI/CD
 
-Um workflow do GitHub Actions localizado em `.github/workflows/main.yml` verifica a configuração do Docker Compose, executa lints nos scripts shell e faz um simples smoke test. Esse teste sobe os serviços com o arquivo de ambiente de exemplo, roda o `backup.sh` e depois derruba tudo. Use esse workflow como ponto de partida para implantações automáticas.
+Um workflow do GitHub Actions localizado em `.github/workflows/main.yml` valida o `docker-compose.yml`, executa *pre-commit* e `shellcheck`, realiza um smoke test dos contêineres e roda os testes unitários com `run-tests.sh`. Utilize esse workflow como ponto de partida para implantações automáticas.
 
 Para instruções detalhadas, consulte `README-Ophthalmology.md`.
 

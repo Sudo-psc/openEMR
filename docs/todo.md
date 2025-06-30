@@ -3,7 +3,7 @@
 ## Versão Review
 
 - Criar script `restore.sh` baseado no `backup.sh`.
-- Implementar workflow de CI (GitHub Actions) para rodar `run-tests.sh` em todos os commits.
+- Workflow de CI (GitHub Actions) configurado para rodar `run-tests.sh` em todos os commits.
 - Refatorar o `setup.sh` para aceitar parâmetros via linha de comando além do modo interativo.
 - Revisar configurações do Nginx para permitir fácil alternância entre certificados autoassinados e Let's Encrypt.
 - Organizar uma pasta `docs/` para centralizar a documentação.
