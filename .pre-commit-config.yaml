@@ -1,0 +1,7 @@
+repos:
+  - repo: https://github.com/koalaman/shellcheck
+    rev: v0.8.0
+    hooks:
+      - id: shellcheck
+        files: \.(sh|bash)$
+        args: ['--severity=warning']

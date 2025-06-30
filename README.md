@@ -173,11 +173,7 @@ Run the shell-based test suite to validate the helper scripts:
 
 ## CI/CD
 
-A GitHub Actions workflow located at `.github/workflows/main.yml` checks the
-Docker Compose configuration, lints shell scripts and performs a simple smoke
-test. The smoke test spins up the services with the example environment file,
-runs the `backup.sh` script and then shuts everything down. Use this workflow as
-a starting point for automated deployments.
+A GitHub Actions workflow located at `.github/workflows/main.yml` validates `docker-compose.yml`, runs *pre-commit* hooks and `shellcheck`, performs a smoke test that starts the services and executes `backup.sh`, and finally runs the unit tests with `run-tests.sh`. Use this workflow as a starting point for automated deployments.
 
 For more detailed instructions, see `README-Ophthalmology.md`.
 
