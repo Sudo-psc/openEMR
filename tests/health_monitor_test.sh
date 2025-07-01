@@ -103,7 +103,12 @@ test_help_command() {
 # Test: Check command (dry run)
 test_check_command() {
     test_start "Check command (single run)"
-    
+
+    if ! command -v docker >/dev/null; then
+        echo -e "${YELLOW}⚠ SKIP: Docker not available${NC}"
+        return
+    fi
+
     # This might fail due to missing dependencies, but should not crash
     local check_output
     local exit_code
