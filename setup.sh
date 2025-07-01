@@ -44,7 +44,7 @@ install_ophthalmology_modules() {
 
 
 # Solicitar dados ao usuario
-read -rp "Domínio do OpenEMR (ex: openemr.example.com): " DOMAIN
+read -rp "Domínio do OpenEMR (ex: seu.dominio.com): " DOMAIN
 read -rp "Senha do MySQL root: " MYSQL_ROOT_PASSWORD
 read -rp "Senha do MySQL para o usuário openemr: " MYSQL_PASS
 read -rp "Usuário inicial do OpenEMR: " OE_USER
@@ -72,7 +72,7 @@ EOFENV
 fi
 
 for f in nginx/nginx.conf nginx/nginx-fallback.conf; do
-    sed -i "s/openemr.example.com/${DOMAIN}/g" "$f"
+    sed -i "s/__DOMAIN__/${DOMAIN}/g" "$f"
 done
 
 log "Iniciando containers..."

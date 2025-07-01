@@ -70,10 +70,10 @@ If you prefer to set things up manually:
    ```bash
    docker-compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot \
        --email you@example.com --agree-tos --no-eff-email \
-       -d openemr.example.com
+       -d <YOUR_DOMAIN>
    docker-compose restart nginx
    ```
-4. Access `https://openemr.example.com` and complete the setup wizard.
+4. Access `https://<YOUR_DOMAIN>` and complete the setup wizard.
 5. To keep your installation up to date run:
    ```bash
    ./update.sh
@@ -197,14 +197,14 @@ The `health_monitor.sh` script is configured primarily through environment varia
 
 Key environment variables:
 
-*   `OPENEMR_URL`: URL of the OpenEMR login page. (Default: `https://emr.saraivavision.com.br`)
+*   `OPENEMR_URL`: URL of the OpenEMR login page. (Default: `https://<YOUR_DOMAIN>`)
 *   `MYSQL_CONTAINER_NAME`: Name of the MySQL Docker container. (Default: `mysql`)
 *   `DB_USER`: MySQL user for the database connectivity check. (Default: `openemr` or the value of `MYSQL_USER` if set)
 *   `DB_PASS`: MySQL password for `DB_USER`. **Must be set in the environment.** (This is typically the same as `MYSQL_PASS` from your `.env` file).
 *   `MYSQL_ROOT_PASSWORD`: Root password for MySQL. Used as a fallback for the MySQL ping check if the `DB_USER` check fails and `DB_USER` is not 'root'.
 *   `NGINX_CONTAINER_NAME`: Name of the Nginx Docker container. (Default: `nginx`)
 *   `NGINX_HEALTH_URL_INTERNAL`: URL to check the Nginx health endpoint. (Default: `http://localhost/health.html` - this assumes Nginx's port 80 is mapped to the host's port 80 and the `health.html` endpoint is configured).
-*   `SSL_DOMAIN_TO_CHECK`: The domain for which the SSL certificate's validity is checked. (Default: `emr.saraivavision.com.br`)
+*   `SSL_DOMAIN_TO_CHECK`: The domain for which the SSL certificate's validity is checked. (Default: `<YOUR_DOMAIN>`)
 *   `SSL_CERT_WARN_DAYS`: Number of days before SSL certificate expiry to trigger a warning. (Default: `30`)
 *   `CERTBOT_CONTAINER_NAME`: Name of the Certbot Docker container. (Default: `certbot`)
 *   `CERTBOT_LOG_LINES_TO_CHECK`: Number of recent Certbot log lines to inspect for errors or success. (Default: `50`)

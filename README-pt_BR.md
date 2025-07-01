@@ -57,10 +57,10 @@ Se preferir configurar manualmente:
    ```bash
 docker-compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot \
     --email you@example.com --agree-tos --no-eff-email \
-    -d openemr.example.com
+    -d <SEU_DOMINIO>
 docker-compose restart nginx
    ```
-4. Acesse `https://openemr.example.com` e complete o assistente de instalação.
+4. Acesse `https://<SEU_DOMINIO>` e complete o assistente de instalação.
 5. Para manter a instalação atualizada, execute:
    ```bash
    ./update.sh
@@ -173,14 +173,14 @@ O script é configurado principalmente via variáveis de ambiente. Itens crític
 
 Principais variáveis:
 
-* `OPENEMR_URL`: URL de login do OpenEMR (padrão: `https://emr.saraivavision.com.br`)
+* `OPENEMR_URL`: URL de login do OpenEMR (padrão: `https://<YOUR_DOMAIN>`)
 * `MYSQL_CONTAINER_NAME`: nome do contêiner MySQL (padrão: `mysql`)
 * `DB_USER`: usuário para teste de conectividade (padrão: `openemr` ou valor de `MYSQL_USER`)
 * `DB_PASS`: senha do `DB_USER` **obrigatória**
 * `MYSQL_ROOT_PASSWORD`: senha de root do MySQL (usada como fallback)
 * `NGINX_CONTAINER_NAME`: nome do contêiner Nginx (padrão: `nginx`)
 * `NGINX_HEALTH_URL_INTERNAL`: URL interna de verificação do Nginx (padrão: `http://localhost/health.html`)
-* `SSL_DOMAIN_TO_CHECK`: domínio para verificar validade do certificado SSL (padrão: `emr.saraivavision.com.br`)
+* `SSL_DOMAIN_TO_CHECK`: domínio para verificar validade do certificado SSL (padrão: `<YOUR_DOMAIN>`)
 * `SSL_CERT_WARN_DAYS`: dias antes do vencimento para gerar alerta (padrão: `30`)
 * `CERTBOT_CONTAINER_NAME`: contêiner do Certbot (padrão: `certbot`)
 * `CERTBOT_LOG_LINES_TO_CHECK`: linhas recentes do log a verificar (padrão: `50`)
