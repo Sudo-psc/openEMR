@@ -3,7 +3,7 @@
 ## Instalação e Configuração
 
 ### 1. Prerequisites
-- A domain name (e.g., `openemr.example.com`) pointing to your server's public IP address.
+- A domain name (e.g., `seu.dominio.com`) pointing to your server's public IP address.
 - Ports 80 and 443 open on your server.
 
 ### 2. Initial Setup Script
@@ -17,11 +17,11 @@ This will start all services defined in `docker-compose.yml`.
 This setup uses Let's Encrypt for SSL certificates. After running the setup script (or `docker-compose up -d`):
 
    **a. Obtain Initial Certificate:**
-   Run the following command, replacing `philipe_cruz@outlook.com` with your email:
+   Run the following command, replacing `you@example.com` with your email:
    ```bash
    docker-compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot \
-       --email philipe_cruz@outlook.com --agree-tos --no-eff-email \
-       -d openemr.example.com
+       --email you@example.com --agree-tos --no-eff-email \
+       -d <YOUR_DOMAIN>
    ```
 
    **b. Restart Nginx:**
@@ -39,21 +39,21 @@ This setup uses Let's Encrypt for SSL certificates. After running the setup scri
    ```
 
 ### 4. Acesso ao Sistema
-- **URL HTTPS**: `https://openemr.example.com` (Recomendado para produção; usa Let's Encrypt)
-- **URL HTTP**: `http://openemr.example.com` (Produção) ou `http://localhost` (Local/desenvolvimento)
+- **URL HTTPS**: `https://<YOUR_DOMAIN>` (Recomendado para produção; usa Let's Encrypt)
+- **URL HTTP**: `http://<YOUR_DOMAIN>` (Produção) ou `http://localhost` (Local/desenvolvimento)
 - **Usuário**: admin
 - **Senha**: pass
 
-**Nota sobre `https://localhost`**: Acessar `https://localhost` provavelmente mostrará avisos de certificado, pois o certificado Let's Encrypt é para `openemr.example.com`. Para acesso local, prefira `http://localhost`.
+**Nota sobre `https://localhost`**: Acessar `https://localhost` provavelmente mostrará avisos de certificado, pois o certificado Let's Encrypt é emitido para `<YOUR_DOMAIN>`. Para acesso local, prefira `http://localhost`.
 
 ## Segurança SSL/HTTPS (Let's Encrypt)
 
 ### Características de Segurança:
-- **Let's Encrypt Certificates**: Trusted SSL certificates for `openemr.example.com`.
+- **Let's Encrypt Certificates**: Trusted SSL certificates for `<YOUR_DOMAIN>`.
 - **Automated Renewal**: Certbot service automatically renews certificates.
 - **Protocolos seguros** TLS 1.2 e 1.3.
 - **Headers de segurança** configurados.
-- **Content Security Policy (CSP)**: `upgrade-insecure-requests` para `https://openemr.example.com` para ajudar a prevenir conteúdo misto.
+- **Content Security Policy (CSP)**: `upgrade-insecure-requests` para `https://<YOUR_DOMAIN>` para ajudar a prevenir conteúdo misto.
 - **Proxy reverso nginx** for managing SSL and serving OpenEMR.
 
 ### For Production:
@@ -147,7 +147,7 @@ echo "Restauração concluída"
 ## Próximos Passos
 
 1. Complete os passos de geração inicial de certificados descritos acima.
-2. Acesse o OpenEMR em `https://openemr.example.com` e conclua o assistente de configuração.
+2. Acesse o OpenEMR em `https://<YOUR_DOMAIN>` e conclua o assistente de configuração.
 3. Configure os usuários específicos da clínica.
 4. O script de instalação já baixa e instala automaticamente o módulo **Eye Exam** e os templates oftalmológicos.
 5. Configure o agendamento para diferentes tipos de consulta.
