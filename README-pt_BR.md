@@ -57,10 +57,10 @@ Se preferir configurar manualmente:
    ```bash
 docker-compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot \
     --email you@example.com --agree-tos --no-eff-email \
-    -d openemr.example.com
+    -d <SEU_DOMINIO>
 docker-compose restart nginx
    ```
-4. Acesse `https://openemr.example.com` e complete o assistente de instalação.
+4. Acesse `https://<SEU_DOMINIO>` e complete o assistente de instalação.
 5. Para manter a instalação atualizada, execute:
    ```bash
    ./update.sh

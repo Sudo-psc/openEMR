@@ -41,12 +41,34 @@ if ! systemctl is-active --quiet docker; then
 fi
 
 if [ ! -f .env ]; then
-    if [ -f .env.example ]; then
-        log "Creating .env from example"
-        cp .env.example .env
-    else
-        abort ".env.example missing"
+    log "Configuring environment variables..."
+    read -rp "Domain for OpenEMR: " DOMAIN
+    read -rp "MySQL root password: " MYSQL_ROOT_PASSWORD
+    read -rp "MySQL password for user openemr: " MYSQL_PASS
+    read -rp "Initial OpenEMR user: " OE_USER
+    read -rp "Initial OpenEMR password: " OE_PASS
+    read -rp "CouchDB user (optional): " COUCHDB_USER
+    if [ -n "$COUCHDB_USER" ]; then
+        read -rp "CouchDB password: " COUCHDB_PASSWORD
     fi
+    cat > .env <<EOF
+MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+MYSQL_USER=openemr
+MYSQL_PASS=${MYSQL_PASS}
+OE_USER=${OE_USER}
+OE_PASS=${OE_PASS}
+EOF
+    if [ -n "${COUCHDB_USER:-}" ]; then
+cat >> .env <<EOF
+COUCHDB_USER=${COUCHDB_USER}
+COUCHDB_PASSWORD=${COUCHDB_PASSWORD}
+EOF
+    fi
+    for f in nginx/nginx.conf nginx/nginx-fallback.conf; do
+        sed -i "s/__DOMAIN__/${DOMAIN}/g" "$f"
+    done
+else
+    log ".env already exists - skipping configuration"
 fi
 
 log "Starting OpenEMR containers..."

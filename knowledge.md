@@ -12,8 +12,8 @@ This project sets up OpenEMR for a generic ophthalmology clinic using Docker Com
 The system is currently configured to use **self-signed certificates** for immediate HTTPS access. This allows both HTTP and HTTPS to work without requiring Let's Encrypt setup.
 
 **Current Access URLs:**
-- **HTTP**: `http://localhost` (Local) or `http://openemr.example.com` (Production)
-- **HTTPS**: `https://localhost` or `https://openemr.example.com` (Uses self-signed certificates - browsers will show security warnings)
+- **HTTP**: `http://localhost` (Local) or `http://<YOUR_DOMAIN>` (Production)
+- **HTTPS**: `https://localhost` or `https://<YOUR_DOMAIN>` (Uses self-signed certificates - browsers will show security warnings)
 
 **Configuration Details:**
 - Uses `nginx-fallback.conf` which includes self-signed certificates
@@ -26,7 +26,7 @@ The system is currently configured to use **self-signed certificates** for immed
 To upgrade to Let's Encrypt certificates (for production without browser warnings):
 
 **Prerequisites:**
-- The domain `openemr.example.com` must have its DNS A record pointing to the public IP address of the server.
+- The domain `<YOUR_DOMAIN>` must have its DNS A record pointing to the public IP address of the server.
 - Port 80 and 443 must be open on the server.
 
 **Steps to Enable Let's Encrypt:**
@@ -41,8 +41,8 @@ To upgrade to Let's Encrypt certificates (for production without browser warning
 2. **Run Certbot to Obtain the Certificate:**
    ```bash
    docker-compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot \
-       --email philipe_cruz@outlook.com --agree-tos --no-eff-email \
-       -d openemr.example.com
+       --email you@example.com --agree-tos --no-eff-email \
+       -d <YOUR_DOMAIN>
    ```
 
 3. **Restart Nginx:**

@@ -58,7 +58,7 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 # Prompt for configuration values
-read -rp "Domínio do OpenEMR (ex: openemr.example.com): " DOMAIN
+read -rp "Domínio do OpenEMR (ex: seu.dominio.com): " DOMAIN
 read -rp "Senha do MySQL root: " MYSQL_ROOT_PASSWORD
 read -rp "Senha do MySQL para o usuário openemr: " MYSQL_PASS
 read -rp "Usuário inicial do OpenEMR: " OE_USER
@@ -142,7 +142,7 @@ fi
 
 # Replace domain in Nginx configs
 for f in nginx/nginx.conf nginx/nginx-fallback.conf; do
-    sed -i "s/openemr.example.com/${DOMAIN}/g" "$f"
+    sed -i "s/__DOMAIN__/${DOMAIN}/g" "$f"
 done
 
 # Apply basic firewall rules if requested

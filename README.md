@@ -70,10 +70,10 @@ If you prefer to set things up manually:
    ```bash
    docker-compose run --rm certbot certonly --webroot --webroot-path /var/www/certbot \
        --email you@example.com --agree-tos --no-eff-email \
-       -d openemr.example.com
+       -d <YOUR_DOMAIN>
    docker-compose restart nginx
    ```
-4. Access `https://openemr.example.com` and complete the setup wizard.
+4. Access `https://<YOUR_DOMAIN>` and complete the setup wizard.
 5. To keep your installation up to date run:
    ```bash
    ./update.sh
